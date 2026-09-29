@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
 
 <meta charset="UTF-8">
 
 <meta name="viewport"
-      content="width=device-width,
-               initial-scale=1.0,
-               maximum-scale=1.0,
-               user-scalable=no">
+content="width=device-width,
+initial-scale=1.0,
+maximum-scale=1.0,
+user-scalable=no">
 
-<title>VR Hand Vision 60 FPS</title>
+<title>VR Hand Objects</title>
 
 <style>
 
@@ -79,7 +80,19 @@ body{
 
 }
 
-.handCanvas{
+
+/*
+=====================================================
+CANVAS
+
+IMPORTANTE:
+
+Aquí NO dibujamos los huesos.
+Solo los objetos interactivos.
+=====================================================
+*/
+
+.objectCanvas{
 
     position:absolute;
 
@@ -92,14 +105,17 @@ body{
 
 }
 
+
 #centerLine{
 
     position:fixed;
 
     left:50%;
+
     top:0;
 
     width:2px;
+
     height:100%;
 
     transform:translateX(-50%);
@@ -112,11 +128,13 @@ body{
 
 }
 
+
 #info{
 
     position:fixed;
 
     top:15px;
+
     left:50%;
 
     transform:translateX(-50%);
@@ -140,6 +158,7 @@ body{
     letter-spacing:2px;
 
     text-shadow:
+
         0 0 8px #00ffff;
 
     white-space:nowrap;
@@ -148,11 +167,13 @@ body{
 
 }
 
+
 #fps{
 
     position:fixed;
 
     top:15px;
+
     right:12px;
 
     z-index:50;
@@ -175,11 +196,13 @@ body{
 
 }
 
+
 #status{
 
     position:fixed;
 
     bottom:15px;
+
     left:50%;
 
     transform:translateX(-50%);
@@ -195,6 +218,7 @@ body{
     letter-spacing:2px;
 
     text-shadow:
+
         0 0 8px #00ff88;
 
     white-space:nowrap;
@@ -202,6 +226,7 @@ body{
     pointer-events:none;
 
 }
+
 
 #startScreen{
 
@@ -224,21 +249,32 @@ body{
     color:white;
 
     background:
+
         radial-gradient(
+
             circle,
+
             #082020 0%,
+
             #020707 45%,
+
             #000 100%
+
         );
 
 }
 
+
 #startScreen h1{
 
     font-size:clamp(
+
         28px,
+
         8vw,
+
         60px
+
     );
 
     letter-spacing:5px;
@@ -248,10 +284,13 @@ body{
     color:#00ffff;
 
     text-shadow:
+
         0 0 10px #00ffff,
+
         0 0 25px #00ffff;
 
 }
+
 
 #startScreen p{
 
@@ -266,6 +305,7 @@ body{
     margin-bottom:30px;
 
 }
+
 
 #startButton{
 
@@ -284,10 +324,13 @@ body{
     font-weight:bold;
 
     box-shadow:
+
         0 0 12px #00ffff,
+
         inset 0 0 15px #003333;
 
 }
+
 
 #startButton:active{
 
@@ -299,48 +342,46 @@ body{
 
 </head>
 
+
 <body>
 
+
+<!-- ==================================================
+     VR
+================================================== -->
 
 <div id="vr">
 
 
-    <!-- OJO IZQUIERDO -->
-
     <div class="eye">
 
         <video
-            id="leftVideo"
-            autoplay
-            muted
-            playsinline>
-        </video>
+        id="leftVideo"
+        autoplay
+        muted
+        playsinline></video>
 
         <canvas
-            id="leftHands"
-            class="handCanvas">
-        </canvas>
+        id="leftObjects"
+        class="objectCanvas"></canvas>
 
     </div>
 
 
-    <!-- OJO DERECHO -->
-
     <div class="eye">
 
         <video
-            id="rightVideo"
-            autoplay
-            muted
-            playsinline>
-        </video>
+        id="rightVideo"
+        autoplay
+        muted
+        playsinline></video>
 
         <canvas
-            id="rightHands"
-            class="handCanvas">
-        </canvas>
+        id="rightObjects"
+        class="objectCanvas"></canvas>
 
     </div>
+
 
 </div>
 
@@ -349,17 +390,17 @@ body{
 
 
 <div id="info">
-    VR CAMERA • 60 FPS
+VR HAND OBJECTS
 </div>
 
 
 <div id="fps">
-    VIDEO: -- | HAND: --
+VIDEO: -- | TRACK: --
 </div>
 
 
 <div id="status">
-    CÁMARA DESACTIVADA
+CÁMARA DESACTIVADA
 </div>
 
 
@@ -368,19 +409,25 @@ body{
     <h1>VR VISION</h1>
 
     <p>
-        Cámara trasera para VR Box.
-        Detección de manos de alta precisión
-        y esqueleto digital fluido.
+
+        Haz 👌 para crear un punto.
+        Haz 🤏 para agarrarlo.
+        Mueve la mano para crear una trayectoria.
+
     </p>
 
     <button id="startButton">
+
         ACTIVAR CÁMARA
+
     </button>
 
 </div>
 
 
-<!-- MEDIA PIPE -->
+<!-- ==================================================
+     MEDIAPIPE
+================================================== -->
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 
@@ -392,34 +439,60 @@ body{
 ===================================================== */
 
 const leftVideo =
-    document.getElementById("leftVideo");
+    document.getElementById(
+        "leftVideo"
+    );
 
 const rightVideo =
-    document.getElementById("rightVideo");
+    document.getElementById(
+        "rightVideo"
+    );
+
 
 const leftCanvas =
-    document.getElementById("leftHands");
+    document.getElementById(
+        "leftObjects"
+    );
 
 const rightCanvas =
-    document.getElementById("rightHands");
+    document.getElementById(
+        "rightObjects"
+    );
+
 
 const leftCtx =
-    leftCanvas.getContext("2d");
+    leftCanvas.getContext(
+        "2d"
+    );
 
 const rightCtx =
-    rightCanvas.getContext("2d");
+    rightCanvas.getContext(
+        "2d"
+    );
+
 
 const startScreen =
-    document.getElementById("startScreen");
+    document.getElementById(
+        "startScreen"
+    );
+
 
 const startButton =
-    document.getElementById("startButton");
+    document.getElementById(
+        "startButton"
+    );
+
 
 const statusText =
-    document.getElementById("status");
+    document.getElementById(
+        "status"
+    );
+
 
 const fpsText =
-    document.getElementById("fps");
+    document.getElementById(
+        "fps"
+    );
 
 
 /* =====================================================
@@ -428,37 +501,43 @@ const fpsText =
 
 
 /*
-   OBJETIVO DEL RENDER
+=====================================================
+IMPORTANTE PARA EL RENDIMIENTO
 
-   La interfaz intenta funcionar a 60 FPS.
+La pantalla intenta renderizar a 60 FPS.
+
+La detección de manos no necesita ejecutarse
+60 veces por segundo.
+
+La hacemos aproximadamente 25 veces/segundo.
+
+Los objetos se interpolan entre detecciones.
+=====================================================
 */
 
-const RENDER_FPS = 60;
+const HAND_INTERVAL = 40;
 
 
 /*
-   OBJETIVO DE DETECCIÓN
+Suavizado del movimiento.
 
-   Intentamos hasta 50 detecciones por segundo.
+Más alto = responde más rápido.
+
+Más bajo = más suave.
 */
 
-const HAND_FPS = 50;
-
-const HAND_INTERVAL =
-    1000 / HAND_FPS;
+const SMOOTHING = 0.55;
 
 
 /*
-   Interpolación.
+Distancias para reconocer gestos.
 
-   0.30 = más suave
-   1.00 = sigue directamente la detección
-
-   Usamos 0.45 para mantener precisión
-   sin que los huesos vibren demasiado.
+Son valores normalizados de MediaPipe.
 */
 
-const SMOOTHING = 0.45;
+const OK_DISTANCE = 0.075;
+
+const PINCH_DISTANCE = 0.065;
 
 
 /* =====================================================
@@ -473,64 +552,116 @@ let detectorBusy = false;
 
 let lastDetection = 0;
 
+
+/*
+Landmarks reales de MediaPipe.
+
+NO SE DIBUJAN.
+*/
+
 let detectedHands = [];
+
+
+/*
+Landmarks suavizados.
+
+Tampoco se dibujan.
+
+Solo se utilizan para calcular
+el movimiento y los gestos.
+*/
 
 let smoothHands = [];
 
+
+/*
+Objeto virtual.
+
+Aquí guardamos los puntos creados.
+*/
+
+let points = [];
+
+
+/*
+¿Estamos agarrando un punto?
+*/
+
+let grabbedPoint = null;
+
+
+/*
+Posición actual de la mano.
+
+No necesariamente se dibuja.
+*/
+
+let handTarget = null;
+
+let handPosition = null;
+
+
+/*
+Última posición utilizada para crear
+un nuevo punto.
+*/
+
+let lastTrailPosition = null;
+
+
+/*
+Evita crear muchos puntos por segundo.
+*/
+
+let lastPointTime = 0;
+
+
+/*
+FPS
+*/
+
 let renderFrames = 0;
 
-let detectionFrames = 0;
+let trackingFrames = 0;
 
 let lastFPSUpdate =
     performance.now();
 
-let renderFPS = 0;
-
-let handFPS = 0;
-
 
 /* =====================================================
-   CONEXIONES DE LA MANO
+   CONEXIONES
+
+   Se mantienen para que MediaPipe tenga
+   toda la estructura de la mano disponible,
+   pero NO LAS DIBUJAMOS.
 ===================================================== */
 
 const connections = [
-
-    /* Pulgar */
 
     [0,1],
     [1,2],
     [2,3],
     [3,4],
 
-    /* Índice */
-
     [0,5],
     [5,6],
     [6,7],
     [7,8],
-
-    /* Medio */
 
     [5,9],
     [9,10],
     [10,11],
     [11,12],
 
-    /* Anular */
-
     [9,13],
     [13,14],
     [14,15],
     [15,16],
 
-    /* Meñique */
-
     [13,17],
     [17,18],
     [18,19],
     [19,20],
-
-    /* Palma */
 
     [0,17]
 
@@ -555,28 +686,28 @@ const hands = new Hands({
 hands.setOptions({
 
     /*
-       2 manos
+    Solo necesitamos una mano para
+    controlar los objetos.
+
+    Esto reduce bastante el consumo.
     */
 
-    maxNumHands:2,
+    maxNumHands:1,
 
 
     /*
-       1 = mayor precisión
+    0 = más rápido.
 
-       Es más pesado que 0.
+    Como los huesos ya NO SE DIBUJAN,
+    podemos utilizar el detector rápido.
     */
 
-    modelComplexity:1,
+    modelComplexity:0,
 
 
-    /*
-       Mayor confianza.
-    */
+    minDetectionConfidence:0.65,
 
-    minDetectionConfidence:0.70,
-
-    minTrackingConfidence:0.70
+    minTrackingConfidence:0.65
 
 });
 
@@ -587,12 +718,13 @@ hands.setOptions({
 
 hands.onResults(function(results){
 
-    detectionFrames++;
+    trackingFrames++;
 
 
     if(
         results &&
-        results.multiHandLandmarks
+        results.multiHandLandmarks &&
+        results.multiHandLandmarks.length > 0
     ){
 
         detectedHands =
@@ -616,19 +748,21 @@ function resizeCanvases(){
     const dpr =
         Math.min(
             window.devicePixelRatio || 1,
-            1.5
+            1.25
         );
 
 
     const width =
         Math.floor(
-            window.innerWidth / 2 * dpr
+            window.innerWidth / 2 *
+            dpr
         );
 
 
     const height =
         Math.floor(
-            window.innerHeight * dpr
+            window.innerHeight *
+            dpr
         );
 
 
@@ -653,6 +787,7 @@ window.addEventListener(
     resizeCanvases
 );
 
+
 resizeCanvases();
 
 
@@ -669,7 +804,8 @@ async function startCamera(){
 
 
         stream =
-            await navigator.mediaDevices.getUserMedia({
+            await navigator.mediaDevices
+            .getUserMedia({
 
                 video:{
 
@@ -678,18 +814,21 @@ async function startCamera(){
                     },
 
                     width:{
-                        ideal:1280,
-                        min:640
+                        ideal:1280
                     },
 
                     height:{
-                        ideal:720,
-                        min:480
+                        ideal:720
                     },
 
                     frameRate:{
+
                         ideal:60,
+
+                        min:30,
+
                         max:60
+
                     }
 
                 },
@@ -698,12 +837,6 @@ async function startCamera(){
 
             });
 
-
-        /*
-        ---------------------------------------------
-        MISMA CÁMARA PARA LOS DOS OJOS
-        ---------------------------------------------
-        */
 
         leftVideo.srcObject =
             stream;
@@ -718,9 +851,7 @@ async function startCamera(){
 
 
         /*
-        ---------------------------------------------
-        INFORMACIÓN REAL DE LA CÁMARA
-        ---------------------------------------------
+        Intentar 60 FPS reales.
         */
 
         const track =
@@ -731,55 +862,23 @@ async function startCamera(){
 
             try{
 
-                const capabilities =
-                    track.getCapabilities();
+                await track.applyConstraints({
 
+                    frameRate:{
 
-                if(
-                    capabilities.frameRate
-                ){
+                        ideal:60,
 
-                    const maxFPS =
-                        capabilities
-                            .frameRate.max;
-
-
-                    /*
-                    Intentar 60.
-                    */
-
-                    if(maxFPS >= 60){
-
-                        await track.applyConstraints({
-
-                            frameRate:{
-                                min:50,
-                                ideal:60,
-                                max:60
-                            }
-
-                        });
-
-                    }else{
-
-                        await track.applyConstraints({
-
-                            frameRate:{
-                                ideal:maxFPS,
-                                max:maxFPS
-                            }
-
-                        });
+                        max:60
 
                     }
 
-                }
+                });
 
-            }catch(error){
+            }catch(e){
 
                 console.log(
-                    "No se pudo modificar FPS:",
-                    error
+                    "FPS automático:",
+                    e
                 );
 
             }
@@ -795,36 +894,28 @@ async function startCamera(){
 
 
         statusText.textContent =
-            "BUSCANDO MANOS...";
+            "HAZ 👌 PARA CREAR UN PUNTO";
 
 
         /*
-        ---------------------------------------------
-        FULLSCREEN
-        ---------------------------------------------
+        Pantalla completa.
         */
 
         try{
 
             if(
                 document.documentElement
-                    .requestFullscreen
+                .requestFullscreen
             ){
 
-                await
-                document.documentElement
-                    .requestFullscreen();
+                await document
+                .documentElement
+                .requestFullscreen();
 
             }
 
-        }catch(error){}
+        }catch(e){}
 
-
-        /*
-        ---------------------------------------------
-        INICIAR RENDER
-        ---------------------------------------------
-        */
 
         requestAnimationFrame(
             render
@@ -852,7 +943,7 @@ async function startCamera(){
 
 
 /* =====================================================
-   DETECCIÓN DE MANOS
+   DETECTAR MANOS
 ===================================================== */
 
 async function detectHands(time){
@@ -864,20 +955,12 @@ async function detectHands(time){
     }
 
 
-    /*
-       Evitar dos inferencias simultáneas.
-    */
-
     if(detectorBusy){
 
         return;
 
     }
 
-
-    /*
-       50 FPS objetivo.
-    */
 
     if(
         time - lastDetection <
@@ -888,10 +971,6 @@ async function detectHands(time){
 
     }
 
-
-    /*
-       Vídeo listo.
-    */
 
     if(
         leftVideo.readyState < 2
@@ -919,7 +998,7 @@ async function detectHands(time){
 
     }catch(error){
 
-        console.error(
+        console.log(
             "MediaPipe:",
             error
         );
@@ -933,15 +1012,10 @@ async function detectHands(time){
 
 
 /* =====================================================
-   SUAVIZAR MANOS
+   SUAVIZAR LANDMARKS
 ===================================================== */
 
 function updateSmoothHands(){
-
-    /*
-       Si no hay manos detectadas,
-       dejamos que desaparezcan.
-    */
 
     if(
         detectedHands.length === 0
@@ -955,25 +1029,30 @@ function updateSmoothHands(){
 
 
     /*
-       Si cambió el número de manos,
-       comenzar de nuevo.
+    Primera detección.
     */
 
     if(
-        smoothHands.length !==
-        detectedHands.length
+        smoothHands.length === 0
     ){
 
         smoothHands =
             detectedHands.map(
+
                 hand =>
 
                 hand.map(
+
                     p => ({
+
                         x:p.x,
+
                         y:p.y,
+
                         z:p.z
+
                     })
+
                 )
 
             );
@@ -983,51 +1062,560 @@ function updateSmoothHands(){
     }
 
 
-    /*
-       Interpolación.
-    */
+    const target =
+        detectedHands[0];
+
+
+    const current =
+        smoothHands[0];
+
+
+    if(!current){
+
+        return;
+
+    }
+
 
     for(
-        let h=0;
-        h<detectedHands.length;
-        h++
+        let i=0;
+        i<target.length;
+        i++
     ){
 
-        const target =
-            detectedHands[h];
+        current[i].x +=
+            (
+                target[i].x -
+                current[i].x
+            )
+            *
+            SMOOTHING;
 
-        const current =
-            smoothHands[h];
+
+        current[i].y +=
+            (
+                target[i].y -
+                current[i].y
+            )
+            *
+            SMOOTHING;
 
 
-        for(
-            let i=0;
-            i<target.length;
-            i++
+        current[i].z +=
+            (
+                target[i].z -
+                current[i].z
+            )
+            *
+            SMOOTHING;
+
+    }
+
+}
+
+
+/* =====================================================
+   DISTANCIA ENTRE DOS PUNTOS
+===================================================== */
+
+function distance(a,b){
+
+    const dx =
+        a.x - b.x;
+
+    const dy =
+        a.y - b.y;
+
+    const dz =
+        (a.z - b.z) * 0.5;
+
+
+    return Math.sqrt(
+
+        dx*dx +
+        dy*dy +
+        dz*dz
+
+    );
+
+}
+
+
+/* =====================================================
+   DETECTAR GESTO 👌
+===================================================== */
+
+function isOKGesture(hand){
+
+    /*
+    Pulgar = 4
+
+    Índice = 8
+
+    Medio = 12
+
+    Anular = 16
+
+    Meñique = 20
+    */
+
+
+    const thumb =
+        hand[4];
+
+    const index =
+        hand[8];
+
+    const middle =
+        hand[12];
+
+    const ring =
+        hand[16];
+
+    const pinky =
+        hand[20];
+
+
+    /*
+    Pulgar e índice juntos.
+    */
+
+    const pinch =
+        distance(
+            thumb,
+            index
+        );
+
+
+    /*
+    Los otros dedos deben estar
+    relativamente alejados.
+    */
+
+    const middleOpen =
+        distance(
+            hand[9],
+            middle
+        ) > 0.12;
+
+
+    const ringOpen =
+        distance(
+            hand[13],
+            ring
+        ) > 0.10;
+
+
+    const pinkyOpen =
+        distance(
+            hand[17],
+            pinky
+        ) > 0.08;
+
+
+    return (
+
+        pinch < OK_DISTANCE &&
+
+        middleOpen &&
+
+        ringOpen &&
+
+        pinkyOpen
+
+    );
+
+}
+
+
+/* =====================================================
+   DETECTAR PINZA 🤏
+===================================================== */
+
+function isPinch(hand){
+
+    if(!hand){
+
+        return false;
+
+    }
+
+
+    const thumb =
+        hand[4];
+
+    const index =
+        hand[8];
+
+
+    return (
+
+        distance(
+            thumb,
+            index
+        )
+        <
+        PINCH_DISTANCE
+
+    );
+
+}
+
+
+/* =====================================================
+   POSICIÓN DE CONTROL
+===================================================== */
+
+function getControlPosition(hand){
+
+    /*
+    Utilizamos el punto medio entre
+    pulgar e índice.
+
+    Esto es más estable para agarrar
+    objetos.
+    */
+
+    const thumb =
+        hand[4];
+
+    const index =
+        hand[8];
+
+
+    return {
+
+        x:
+            (thumb.x + index.x)
+            / 2,
+
+        y:
+            (thumb.y + index.y)
+            / 2
+
+    };
+
+}
+
+
+/* =====================================================
+   CREAR PUNTO
+===================================================== */
+
+function createPoint(position){
+
+    points.push({
+
+        x:position.x,
+
+        y:position.y,
+
+        grabbed:false,
+
+        radius:9,
+
+        created:
+            performance.now()
+
+    });
+
+}
+
+
+/* =====================================================
+   BUSCAR PUNTO CERCANO
+===================================================== */
+
+function findClosestPoint(position){
+
+    let closest =
+        null;
+
+    let closestDistance =
+        999;
+
+
+    for(
+        const point
+        of points
+    ){
+
+        const dx =
+            point.x -
+            position.x;
+
+        const dy =
+            point.y -
+            position.y;
+
+
+        const d =
+            Math.sqrt(
+                dx*dx +
+                dy*dy
+            );
+
+
+        /*
+        Radio de agarre.
+
+        0.07 aproximadamente 7%
+        del ancho de pantalla.
+        */
+
+        if(
+            d < 0.07 &&
+            d < closestDistance
         ){
 
-            current[i].x +=
-                (
-                    target[i].x -
-                    current[i].x
-                )
-                * SMOOTHING;
+            closest =
+                point;
+
+            closestDistance =
+                d;
+
+        }
+
+    }
 
 
-            current[i].y +=
-                (
-                    target[i].y -
-                    current[i].y
-                )
-                * SMOOTHING;
+    return closest;
+
+}
 
 
-            current[i].z +=
-                (
-                    target[i].z -
-                    current[i].z
-                )
-                * SMOOTHING;
+/* =====================================================
+   ACTUALIZAR OBJETOS
+===================================================== */
+
+function updateInteraction(){
+
+    if(
+        smoothHands.length === 0
+    ){
+
+        return;
+
+    }
+
+
+    const hand =
+        smoothHands[0];
+
+
+    const position =
+        getControlPosition(
+            hand
+        );
+
+
+    handPosition =
+        position;
+
+
+    const ok =
+        isOKGesture(
+            hand
+        );
+
+
+    const pinch =
+        isPinch(
+            hand
+        );
+
+
+    /*
+    =================================================
+    👌 CREAR PUNTO
+    =================================================
+    */
+
+    if(
+        ok &&
+        !grabbedPoint
+    ){
+
+        /*
+        No crear 100 puntos seguidos.
+        */
+
+        const now =
+            performance.now();
+
+
+        if(
+            now - lastPointTime >
+            500
+        ){
+
+            createPoint(
+                position
+            );
+
+
+            lastPointTime =
+                now;
+
+        }
+
+    }
+
+
+    /*
+    =================================================
+    🤏 AGARRAR
+    =================================================
+    */
+
+    if(
+        pinch &&
+        !grabbedPoint
+    ){
+
+        const closest =
+            findClosestPoint(
+                position
+            );
+
+
+        if(closest){
+
+            grabbedPoint =
+                closest;
+
+            grabbedPoint.grabbed =
+                true;
+
+            grabbedPoint.radius =
+                14;
+
+
+            lastTrailPosition = {
+
+                x:
+                    position.x,
+
+                y:
+                    position.y
+
+            };
+
+        }
+
+    }
+
+
+    /*
+    =================================================
+    SOLTAR
+    =================================================
+    */
+
+    if(
+        !pinch &&
+        grabbedPoint
+    ){
+
+        grabbedPoint.grabbed =
+            false;
+
+        grabbedPoint.radius =
+            9;
+
+        grabbedPoint =
+            null;
+
+        lastTrailPosition =
+            null;
+
+    }
+
+
+    /*
+    =================================================
+    MOVER PUNTO
+    =================================================
+    */
+
+    if(
+        grabbedPoint &&
+        pinch
+    ){
+
+        grabbedPoint.x =
+            position.x;
+
+        grabbedPoint.y =
+            position.y;
+
+
+        /*
+        ---------------------------------------------
+        CREAR COPIA / TRAZA
+        ---------------------------------------------
+        */
+
+        if(
+            lastTrailPosition
+        ){
+
+            const dx =
+                position.x -
+                lastTrailPosition.x;
+
+            const dy =
+                position.y -
+                lastTrailPosition.y;
+
+
+            const movement =
+                Math.sqrt(
+                    dx*dx +
+                    dy*dy
+                );
+
+
+            /*
+            Solo crear otro punto si realmente
+            movimos la mano una distancia mínima.
+            */
+
+            if(
+                movement > 0.025
+            ){
+
+                points.push({
+
+                    x:
+                        position.x,
+
+                    y:
+                        position.y,
+
+                    grabbed:false,
+
+                    radius:7,
+
+                    trail:true,
+
+                    created:
+                        performance.now()
+
+                });
+
+
+                lastTrailPosition = {
+
+                    x:
+                        position.x,
+
+                    y:
+                        position.y
+
+                };
+
+            }
 
         }
 
@@ -1037,173 +1625,188 @@ function updateSmoothHands(){
 
 
 /* =====================================================
-   DIBUJAR MANO
+   DIBUJAR OBJETOS
 ===================================================== */
 
-function drawHand(
-    ctx,
-    landmarks,
-    width,
-    height
-){
-
-    ctx.save();
-
-
-    /*
-    ---------------------------------------------
-    HUESOS
-    ---------------------------------------------
-    */
-
-    ctx.strokeStyle =
-        "#00ffff";
-
-    ctx.lineWidth =
-        3.2;
-
-    ctx.lineCap =
-        "round";
-
-    ctx.lineJoin =
-        "round";
-
-
-    ctx.shadowBlur =
-        13;
-
-    ctx.shadowColor =
-        "#00ffff";
-
-
-    for(
-        const connection
-        of connections
-    ){
-
-        const a =
-            landmarks[
-                connection[0]
-            ];
-
-        const b =
-            landmarks[
-                connection[1]
-            ];
-
-
-        const ax =
-            a.x * width;
-
-        const ay =
-            a.y * height;
-
-
-        const bx =
-            b.x * width;
-
-        const by =
-            b.y * height;
-
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            ax,
-            ay
-        );
-
-        ctx.lineTo(
-            bx,
-            by
-        );
-
-        ctx.stroke();
-
-    }
-
-
-    /*
-    ---------------------------------------------
-    ARTICULACIONES
-    ---------------------------------------------
-    */
-
-    ctx.fillStyle =
-        "#ffffff";
-
-    ctx.shadowBlur =
-        18;
-
-    ctx.shadowColor =
-        "#00ffff";
-
-
-    for(
-        const p
-        of landmarks
-    ){
-
-        const x =
-            p.x * width;
-
-        const y =
-            p.y * height;
-
-
-        ctx.beginPath();
-
-        ctx.arc(
-            x,
-            y,
-            4,
-            0,
-            Math.PI * 2
-        );
-
-        ctx.fill();
-
-    }
-
-
-    ctx.restore();
-
-}
-
-
-/* =====================================================
-   DIBUJAR MANOS
-===================================================== */
-
-function drawHands(
+function drawScene(
     ctx,
     canvas
 ){
 
     ctx.clearRect(
+
         0,
         0,
+
         canvas.width,
         canvas.height
+
     );
 
 
-    for(
-        const hand
-        of smoothHands
+    /*
+    =================================================
+    LÍNEAS
+    =================================================
+    */
+
+    if(
+        points.length > 1
     ){
 
-        drawHand(
+        ctx.save();
 
-            ctx,
 
-            hand,
+        ctx.strokeStyle =
+            "rgba(0,255,255,.75)";
 
-            canvas.width,
 
-            canvas.height
+        ctx.lineWidth =
+            3;
+
+
+        ctx.shadowBlur =
+            10;
+
+        ctx.shadowColor =
+            "#00ffff";
+
+
+        ctx.beginPath();
+
+
+        for(
+            let i=0;
+            i<points.length;
+            i++
+        ){
+
+            const point =
+                points[i];
+
+
+            const x =
+                point.x *
+                canvas.width;
+
+
+            const y =
+                point.y *
+                canvas.height;
+
+
+            if(
+                i===0
+            ){
+
+                ctx.moveTo(
+                    x,
+                    y
+                );
+
+            }else{
+
+                ctx.lineTo(
+                    x,
+                    y
+                );
+
+            }
+
+        }
+
+
+        ctx.stroke();
+
+
+        ctx.restore();
+
+    }
+
+
+    /*
+    =================================================
+    PUNTOS
+    =================================================
+    */
+
+    for(
+        const point
+        of points
+    ){
+
+        const x =
+            point.x *
+            canvas.width;
+
+
+        const y =
+            point.y *
+            canvas.height;
+
+
+        const radius =
+            point.radius;
+
+
+        ctx.save();
+
+
+        /*
+        Punto agarrado = rojo.
+
+        Punto normal = blanco.
+        */
+
+        if(
+            point.grabbed
+        ){
+
+            ctx.fillStyle =
+                "#ff2020";
+
+            ctx.shadowColor =
+                "#ff0000";
+
+            ctx.shadowBlur =
+                25;
+
+        }else{
+
+            ctx.fillStyle =
+                "#ffffff";
+
+            ctx.shadowColor =
+                "#ffffff";
+
+            ctx.shadowBlur =
+                18;
+
+        }
+
+
+        ctx.beginPath();
+
+
+        ctx.arc(
+
+            x,
+
+            y,
+
+            radius,
+
+            0,
+
+            Math.PI * 2
 
         );
+
+
+        ctx.fill();
+
+
+        ctx.restore();
 
     }
 
@@ -1224,43 +1827,21 @@ function updateFPS(){
         now - lastFPSUpdate >= 1000
     ){
 
-        renderFPS =
-            renderFrames;
-
-        handFPS =
-            detectionFrames;
-
-
         fpsText.textContent =
             "VIDEO: " +
-            renderFPS +
-            " | HAND: " +
-            handFPS;
+            Math.round(
+                renderFrames
+            ) +
+            " | TRACK: " +
+            trackingFrames;
 
 
         renderFrames = 0;
 
-        detectionFrames = 0;
+        trackingFrames = 0;
 
-        lastFPSUpdate = now;
-
-
-        if(
-            smoothHands.length > 0
-        ){
-
-            statusText.textContent =
-                smoothHands.length === 1
-                ? "1 MANO • TRACKING"
-                : smoothHands.length +
-                  " MANOS • TRACKING";
-
-        }else{
-
-            statusText.textContent =
-                "BUSCANDO MANOS...";
-
-        }
+        lastFPSUpdate =
+            now;
 
     }
 
@@ -1282,16 +1863,18 @@ function render(time){
 
     /*
     ---------------------------------------------
-    DETECCIÓN
+    MediaPipe
     ---------------------------------------------
     */
 
-    detectHands(time);
+    detectHands(
+        time
+    );
 
 
     /*
     ---------------------------------------------
-    SUAVIZADO
+    Suavizado invisible
     ---------------------------------------------
     */
 
@@ -1300,17 +1883,28 @@ function render(time){
 
     /*
     ---------------------------------------------
-    DIBUJAR
+    LÓGICA DE GESTOS
     ---------------------------------------------
     */
 
-    drawHands(
+    updateInteraction();
+
+
+    /*
+    ---------------------------------------------
+    SOLO DIBUJAMOS OBJETOS
+
+    LOS HUESOS NO SE DIBUJAN.
+    ---------------------------------------------
+    */
+
+    drawScene(
         leftCtx,
         leftCanvas
     );
 
 
-    drawHands(
+    drawScene(
         rightCtx,
         rightCanvas
     );
@@ -1323,6 +1917,7 @@ function render(time){
     */
 
     renderFrames++;
+
 
     updateFPS();
 
@@ -1345,11 +1940,15 @@ function render(time){
 ===================================================== */
 
 startButton.addEventListener(
+
     "click",
+
     startCamera
+
 );
 
 </script>
 
 </body>
+
 </html>
