@@ -9,7 +9,7 @@
                maximum-scale=1.0,
                user-scalable=no">
 
-<title>VR Hand Vision</title>
+<title>VR Camera 60 FPS</title>
 
 <style>
 *{
@@ -23,7 +23,7 @@ html,body{
     height:100%;
     overflow:hidden;
     background:#000;
-    font-family:Arial,sans-serif;
+    touch-action:none;
 }
 
 #app{
@@ -34,12 +34,10 @@ html,body{
     background:#000;
 }
 
-/* Cámara original invisible */
 #video{
     display:none;
 }
 
-/* Canvas que contiene las dos vistas VR */
 #vrCanvas{
     position:absolute;
     inset:0;
@@ -49,19 +47,18 @@ html,body{
     background:#000;
 }
 
-/* Línea central del VR Box */
 #divider{
     position:absolute;
     left:50%;
     top:0;
-    width:3px;
+    width:2px;
     height:100%;
     transform:translateX(-50%);
     background:#000;
     z-index:10;
+    pointer-events:none;
 }
 
-/* Menú inicial */
 #startScreen{
     position:absolute;
     inset:0;
@@ -73,7 +70,7 @@ html,body{
     align-items:center;
 
     background:
-        radial-gradient(circle at center,
+        radial-gradient(circle,
         #102020 0%,
         #020505 45%,
         #000 100%);
@@ -86,6 +83,7 @@ html,body{
     font-size:clamp(25px,7vw,55px);
     letter-spacing:4px;
     margin-bottom:15px;
+
     text-shadow:
         0 0 8px #00ffff,
         0 0 20px #00ffff;
@@ -101,6 +99,7 @@ html,body{
 
 #startButton{
     padding:18px 35px;
+
     border:none;
     border-radius:10px;
 
@@ -121,19 +120,22 @@ html,body{
     transform:scale(.95);
 }
 
-/* Información */
 #info{
     position:absolute;
+
     top:15px;
     left:50%;
+
     transform:translateX(-50%);
 
     z-index:20;
 
     color:#00ffff;
+
     background:rgba(0,0,0,.45);
 
     border:1px solid rgba(0,255,255,.4);
+
     border-radius:8px;
 
     padding:7px 14px;
@@ -142,23 +144,30 @@ html,body{
     letter-spacing:2px;
 
     pointer-events:none;
+
+    white-space:nowrap;
 }
 
 #status{
     position:absolute;
+
     bottom:15px;
     left:50%;
+
     transform:translateX(-50%);
 
     z-index:20;
 
     color:#00ff88;
+
     font-size:12px;
     letter-spacing:2px;
 
     text-shadow:0 0 8px #00ff88;
 
     pointer-events:none;
+
+    white-space:nowrap;
 }
 </style>
 </head>
@@ -167,106 +176,149 @@ html,body{
 
 <div id="app">
 
-    <video id="video"
-           autoplay
-           playsinline
-           muted></video>
+<video id="video"
+       autoplay
+       playsinline
+       muted></video>
 
-    <canvas id="vrCanvas"></canvas>
+<canvas id="vrCanvas"></canvas>
 
-    <div id="divider"></div>
+<div id="divider"></div>
 
-    <div id="info">
-        VR HAND VISION
-    </div>
+<div id="info">
+VR CAMERA • 60 FPS
+</div>
 
-    <div id="status">
-        CÁMARA DESACTIVADA
-    </div>
+<div id="status">
+CÁMARA DESACTIVADA
+</div>
 
-    <div id="startScreen">
+<div id="startScreen">
 
-        <h1>VR VISION</h1>
+<h1>VR VISION</h1>
 
-        <p>
-            Coloca el teléfono en tu VR Box y apunta la cámara hacia
-            tus manos. El sistema dibujará un esqueleto digital
-            sobre las manos detectadas.
-        </p>
+<p>
+Cámara trasera en pantalla dividida para VR Box.
+Las manos detectadas aparecerán con un esqueleto
+digital.
+</p>
 
-        <button id="startButton">
-            ACTIVAR CÁMARA
-        </button>
+<button id="startButton">
+ACTIVAR CÁMARA
+</button>
 
-    </div>
+</div>
 
 </div>
 
 
-<!-- MediaPipe Hands -->
+<!-- MediaPipe -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 
 <script>
 
-const video = document.getElementById("video");
-const canvas = document.getElementById("vrCanvas");
-const ctx = canvas.getContext("2d");
+/* =====================================================
+   ELEMENTOS
+===================================================== */
 
-const startScreen = document.getElementById("startScreen");
-const startButton = document.getElementById("startButton");
-const statusText = document.getElementById("status");
+const video =
+    document.getElementById("video");
 
-let camera = null;
+const canvas =
+    document.getElementById("vrCanvas");
+
+const ctx =
+    canvas.getContext("2d", {
+        alpha:false,
+        desynchronized:true
+    });
+
+const startScreen =
+    document.getElementById("startScreen");
+
+const startButton =
+    document.getElementById("startButton");
+
+const statusText =
+    document.getElementById("status");
+
+
+/* =====================================================
+   VARIABLES
+===================================================== */
+
+let stream = null;
+
+let cameraStarted = false;
 
 let detectedHands = [];
 
+let lastHandProcess = 0;
 
-/*
-====================================================
-CONFIGURACIÓN
-====================================================
-*/
-
-const SETTINGS = {
-
-    /* Separación de las dos imágenes VR */
-    eyeSeparation: 0.06,
-
-    /* Tamaño de los puntos de las articulaciones */
-    jointSize: 5,
-
-    /* Grosor de los huesos */
-    boneWidth: 4
-
-};
+let handProcessing = false;
 
 
 /*
-====================================================
-RESOLUCIÓN
-====================================================
+   La cámara se muestra a 60 FPS cuando el
+   dispositivo/navegador realmente lo permite.
+
+   La detección de manos se limita a 30 FPS
+   para evitar que MediaPipe bloquee el render.
 */
+
+const HAND_FPS = 30;
+
+const HAND_INTERVAL =
+    1000 / HAND_FPS;
+
+
+/* =====================================================
+   CANVAS
+===================================================== */
 
 function resizeCanvas(){
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const dpr =
+        Math.min(
+            window.devicePixelRatio || 1,
+            1.5
+        );
+
+    canvas.width =
+        Math.floor(
+            window.innerWidth * dpr
+        );
+
+    canvas.height =
+        Math.floor(
+            window.innerHeight * dpr
+        );
+
+    canvas.style.width =
+        window.innerWidth + "px";
+
+    canvas.style.height =
+        window.innerHeight + "px";
+
+    /*
+       Trabajamos directamente en píxeles
+       del canvas.
+    */
 
 }
 
-window.addEventListener("resize",resizeCanvas);
+window.addEventListener(
+    "resize",
+    resizeCanvas
+);
 
 resizeCanvas();
 
 
-/*
-====================================================
-CONEXIONES DE LOS HUESOS
-====================================================
-*/
+/* =====================================================
+   CONEXIONES DE LA MANO
+===================================================== */
 
 const HAND_CONNECTIONS = [
 
@@ -306,241 +358,460 @@ const HAND_CONNECTIONS = [
 ];
 
 
-/*
-====================================================
-MEDIAPIPE
-====================================================
-*/
+/* =====================================================
+   MEDIAPIPE
+===================================================== */
 
-const hands = new Hands({
+const hands =
+    new Hands({
 
-    locateFile: function(file){
+        locateFile:function(file){
 
-        return "https://cdn.jsdelivr.net/npm/@mediapipe/hands/" + file;
+            return
+            "https://cdn.jsdelivr.net/npm/@mediapipe/hands/"
+            + file;
 
-    }
+        }
 
-});
+    });
 
 
 hands.setOptions({
 
+    /*
+       2 manos
+    */
     maxNumHands:2,
 
-    modelComplexity:1,
+    /*
+       0 = más rápido
+       1 = más preciso pero pesado
 
-    minDetectionConfidence:0.6,
+       Usamos 0 para aumentar FPS.
+    */
+    modelComplexity:0,
 
-    minTrackingConfidence:0.6
+    minDetectionConfidence:0.55,
+
+    minTrackingConfidence:0.55
 
 });
 
 
-/*
-====================================================
-RESULTADOS DE LAS MANOS
-====================================================
-*/
+/* =====================================================
+   RESULTADOS
+===================================================== */
 
 hands.onResults(function(results){
 
-    detectedHands = [];
-
     if(results.multiHandLandmarks){
 
-        for(let hand of results.multiHandLandmarks){
+        detectedHands =
+            results.multiHandLandmarks;
 
-            detectedHands.push(hand);
+    }else{
 
-        }
+        detectedHands = [];
 
     }
 
 });
 
 
-/*
-====================================================
-DIBUJAR CÁMARA
-====================================================
-*/
+/* =====================================================
+   CÁMARA TRASERA
+===================================================== */
 
-function drawCamera(){
+async function startCamera(){
 
-    const w = canvas.width;
-    const h = canvas.height;
+    try{
 
-    const half = w / 2;
-
-    ctx.clearRect(0,0,w,h);
-
-    if(video.readyState >= 2){
-
-        /*
-        ================================================
-        OJO IZQUIERDO
-        ================================================
-        */
-
-        ctx.save();
-
-        ctx.beginPath();
-
-        ctx.rect(
-            0,
-            0,
-            half,
-            h
-        );
-
-        ctx.clip();
-
-        drawVideoForEye(
-            0,
-            half
-        );
-
-        ctx.restore();
+        statusText.textContent =
+            "SOLICITANDO CÁMARA TRASERA...";
 
 
         /*
-        ================================================
-        OJO DERECHO
-        ================================================
+        ---------------------------------------------
+        PEDIR CÁMARA TRASERA
+        ---------------------------------------------
         */
 
-        ctx.save();
+        stream =
+            await navigator.mediaDevices.getUserMedia({
 
-        ctx.beginPath();
+                video:{
 
-        ctx.rect(
-            half,
-            0,
-            half,
-            h
-        );
+                    facingMode:{
+                        ideal:"environment"
+                    },
 
-        ctx.clip();
+                    width:{
+                        ideal:1280
+                    },
 
-        drawVideoForEye(
-            half,
-            half
-        );
+                    height:{
+                        ideal:720
+                    },
 
-        ctx.restore();
+                    frameRate:{
+                        ideal:60,
+                        min:30
+                    }
+
+                },
+
+                audio:false
+
+            });
+
+
+        video.srcObject =
+            stream;
 
 
         /*
-        Dibujar manos en ambos ojos
+        ---------------------------------------------
+        ESPERAR A QUE LA CÁMARA ESTÉ LISTA
+        ---------------------------------------------
         */
 
-        drawHandsForEye(
-            0,
-            half
+        await new Promise(
+            resolve => {
+
+                if(video.readyState >= 2){
+
+                    resolve();
+
+                }else{
+
+                    video.onloadedmetadata =
+                        resolve;
+
+                }
+
+            }
         );
 
-        drawHandsForEye(
-            half,
-            half
+
+        await video.play();
+
+
+        /*
+        ---------------------------------------------
+        INTENTAR FORZAR 60 FPS
+        ---------------------------------------------
+        */
+
+        const track =
+            stream.getVideoTracks()[0];
+
+
+        if(track){
+
+            try{
+
+                const capabilities =
+                    track.getCapabilities();
+
+                if(
+                    capabilities.frameRate &&
+                    capabilities.frameRate.max >= 60
+                ){
+
+                    await track.applyConstraints({
+
+                        frameRate:{
+                            ideal:60,
+                            max:60
+                        }
+
+                    });
+
+                }
+
+            }catch(e){
+
+                console.log(
+                    "No se pudo aplicar 60 FPS:",
+                    e
+                );
+
+            }
+
+        }
+
+
+        /*
+        ---------------------------------------------
+        OCULTAR PANTALLA INICIAL
+        ---------------------------------------------
+        */
+
+        startScreen.style.display =
+            "none";
+
+
+        cameraStarted = true;
+
+
+        statusText.textContent =
+            "CÁMARA TRASERA ACTIVA • 60 FPS";
+
+
+        /*
+        ---------------------------------------------
+        FULLSCREEN
+        ---------------------------------------------
+        */
+
+        try{
+
+            if(
+                document.documentElement
+                    .requestFullscreen
+            ){
+
+                await
+                document.documentElement
+                    .requestFullscreen();
+
+            }
+
+        }catch(e){
+
+            console.log(
+                "Fullscreen no disponible"
+            );
+
+        }
+
+
+        /*
+        ---------------------------------------------
+        EMPEZAR DETECCIÓN
+        ---------------------------------------------
+        */
+
+        requestAnimationFrame(
+            render
+        );
+
+
+    }catch(error){
+
+        console.error(error);
+
+        statusText.textContent =
+            "ERROR DE CÁMARA";
+
+
+        alert(
+            "No se pudo activar la cámara trasera.\n\n"
+            +
+            error.message
         );
 
     }
-
-    requestAnimationFrame(drawCamera);
 
 }
 
 
-/*
-====================================================
-DIBUJAR VIDEO PARA CADA OJO
-====================================================
-*/
+/* =====================================================
+   PROCESAMIENTO DE MANOS
+===================================================== */
 
-function drawVideoForEye(x,eyeWidth){
+async function processHands(timestamp){
 
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
+    /*
+       No ejecutar MediaPipe continuamente.
 
-    if(!vw || !vh) return;
+       Esto evita que el procesador se sature.
+    */
 
-    const videoRatio = vw/vh;
-    const screenRatio = eyeWidth/canvas.height;
+    if(
+        !cameraStarted ||
+        handProcessing
+    ){
+
+        return;
+
+    }
+
+
+    if(
+        timestamp - lastHandProcess <
+        HAND_INTERVAL
+    ){
+
+        return;
+
+    }
+
+
+    lastHandProcess =
+        timestamp;
+
+
+    if(
+        video.readyState < 2
+    ){
+
+        return;
+
+    }
+
+
+    handProcessing = true;
+
+
+    try{
+
+        await hands.send({
+
+            image:video
+
+        });
+
+    }catch(error){
+
+        console.log(
+            "MediaPipe:",
+            error
+        );
+
+    }
+
+
+    handProcessing = false;
+
+}
+
+
+/* =====================================================
+   DIBUJAR CÁMARA
+===================================================== */
+
+function drawEye(
+    x,
+    eyeWidth
+){
+
+    if(
+        video.readyState < 2
+    ){
+
+        return;
+
+    }
+
+
+    const vw =
+        video.videoWidth;
+
+    const vh =
+        video.videoHeight;
+
+
+    if(!vw || !vh){
+
+        return;
+
+    }
+
+
+    const videoRatio =
+        vw / vh;
+
+    const screenRatio =
+        eyeWidth / canvas.height;
+
 
     let dw;
     let dh;
 
-    if(videoRatio > screenRatio){
 
-        dh = canvas.height;
-        dw = dh * videoRatio;
+    /*
+    ---------------------------------------------
+    COVER
+    ---------------------------------------------
+    */
+
+    if(
+        videoRatio >
+        screenRatio
+    ){
+
+        dh =
+            canvas.height;
+
+        dw =
+            dh * videoRatio;
 
     }else{
 
-        dw = eyeWidth;
-        dh = dw / videoRatio;
+        dw =
+            eyeWidth;
+
+        dh =
+            dw / videoRatio;
 
     }
+
 
     const offsetX =
         x +
         (eyeWidth-dw)/2;
+
 
     const offsetY =
         (canvas.height-dh)/2;
 
 
     /*
-    Cámara frontal:
-    imagen espejada
+    ---------------------------------------------
+    CÁMARA TRASERA
+
+    NO hacemos mirror.
+
+    ---------------------------------------------
     */
 
-    ctx.save();
-
-    ctx.translate(
-        offsetX + dw,
-        offsetY
-    );
-
-    ctx.scale(-1,1);
-
     ctx.drawImage(
+
         video,
-        0,
-        0,
+
+        offsetX,
+        offsetY,
         dw,
         dh
-    );
 
-    ctx.restore();
+    );
 
 }
 
 
-/*
-====================================================
-DIBUJAR ESQUELETO
-====================================================
-*/
+/* =====================================================
+   DIBUJAR MANOS
+===================================================== */
 
-function drawHandsForEye(x,eyeWidth){
+function drawHands(
+    x,
+    eyeWidth
+){
 
-    if(detectedHands.length === 0){
-
-        statusText.textContent =
-            "BUSCANDO MANOS...";
+    if(
+        detectedHands.length === 0
+    ){
 
         return;
 
     }
 
-    statusText.textContent =
-        detectedHands.length === 1
-        ? "1 MANO DETECTADA"
-        : detectedHands.length + " MANOS DETECTADAS";
 
-
-    for(const landmarks of detectedHands){
+    for(
+        const landmarks
+        of detectedHands
+    ){
 
         drawHand(
             landmarks,
@@ -553,91 +824,99 @@ function drawHandsForEye(x,eyeWidth){
 }
 
 
-/*
-====================================================
-TRANSFORMAR COORDENADAS
-====================================================
-*/
+/* =====================================================
+   CONVERTIR COORDENADAS
+===================================================== */
 
-function getHandPoint(point,x,eyeWidth){
+function getHandPoint(
+    point,
+    x,
+    eyeWidth
+){
 
     /*
-    MediaPipe:
+       Cámara trasera:
 
-    x = 0 izquierda
-    x = 1 derecha
-
-    Como la cámara frontal está espejada,
-    invertimos X.
+       NO invertimos X.
     */
 
-    let px =
-        (1-point.x) * eyeWidth;
+    const px =
+        point.x * eyeWidth + x;
 
-    let py =
+
+    const py =
         point.y * canvas.height;
 
 
-    /*
-    Separación pequeña para crear
-    sensación de profundidad.
-    */
-
-    px += x;
-
-
     return {
+
         x:px,
         y:py
+
     };
 
 }
 
 
-/*
-====================================================
-DIBUJAR MANO
-====================================================
-*/
+/* =====================================================
+   DIBUJAR ESQUELETO
+===================================================== */
 
-function drawHand(landmarks,x,eyeWidth){
-
-    /*
-    -----------------------------------------------
-    HUESOS
-    -----------------------------------------------
-    */
+function drawHand(
+    landmarks,
+    x,
+    eyeWidth
+){
 
     ctx.save();
 
-    ctx.lineWidth =
-        SETTINGS.boneWidth;
-
-    ctx.lineCap="round";
-    ctx.lineJoin="round";
 
     /*
-    Glow
+    ---------------------------------------------
+    HUESOS
+    ---------------------------------------------
     */
 
-    ctx.shadowBlur=15;
-    ctx.shadowColor="#00ffff";
+    ctx.lineWidth = 3;
 
-    ctx.strokeStyle="#00ffff";
+    ctx.lineCap =
+        "round";
+
+    ctx.lineJoin =
+        "round";
 
 
-    for(const connection of HAND_CONNECTIONS){
+    ctx.strokeStyle =
+        "#00ffff";
+
+
+    ctx.shadowBlur =
+        12;
+
+    ctx.shadowColor =
+        "#00ffff";
+
+
+    for(
+        const connection
+        of HAND_CONNECTIONS
+    ){
 
         const a =
             getHandPoint(
-                landmarks[connection[0]],
+                landmarks[
+                    connection[0]
+                ],
                 x,
                 eyeWidth
             );
 
+
         const b =
             getHandPoint(
-                landmarks[connection[1]],
+                landmarks[
+                    connection[1]
+                ],
                 x,
                 eyeWidth
             );
@@ -661,16 +940,30 @@ function drawHand(landmarks,x,eyeWidth){
 
 
     /*
-    -----------------------------------------------
+    ---------------------------------------------
     ARTICULACIONES
-    -----------------------------------------------
+    ---------------------------------------------
     */
 
-    for(let i=0;i<landmarks.length;i++){
+    ctx.fillStyle =
+        "#ffffff";
+
+
+    ctx.shadowBlur =
+        15;
+
+    ctx.shadowColor =
+        "#00ffff";
+
+
+    for(
+        const point
+        of landmarks
+    ){
 
         const p =
             getHandPoint(
-                landmarks[i],
+                point,
                 x,
                 eyeWidth
             );
@@ -681,154 +974,173 @@ function drawHand(landmarks,x,eyeWidth){
         ctx.arc(
             p.x,
             p.y,
-            SETTINGS.jointSize,
+            4,
             0,
-            Math.PI*2
+            Math.PI * 2
         );
-
-        ctx.fillStyle="#ffffff";
-
-        ctx.shadowBlur=20;
-        ctx.shadowColor="#00ffff";
 
         ctx.fill();
 
     }
+
 
     ctx.restore();
 
 }
 
 
-/*
-====================================================
-INICIAR CÁMARA
-====================================================
-*/
+/* =====================================================
+   RENDER PRINCIPAL
+===================================================== */
 
-async function startCamera(){
+function render(timestamp){
 
-    try{
+    /*
+       IMPORTANTE:
 
-        statusText.textContent =
-            "SOLICITANDO CÁMARA...";
+       requestAnimationFrame intenta actualizar
+       la pantalla aproximadamente 60 veces por
+       segundo.
+    */
 
+    const width =
+        canvas.width;
 
-        const stream =
-            await navigator.mediaDevices.getUserMedia({
-
-                video:{
-                    facingMode:"user",
-
-                    width:{
-                        ideal:1280
-                    },
-
-                    height:{
-                        ideal:720
-                    }
-                },
-
-                audio:false
-
-            });
+    const height =
+        canvas.height;
 
 
-        video.srcObject=stream;
+    /*
+    ---------------------------------------------
+    LIMPIAR
+    ---------------------------------------------
+    */
+
+    ctx.fillStyle =
+        "#000";
+
+    ctx.fillRect(
+        0,
+        0,
+        width,
+        height
+    );
 
 
-        await video.play();
+    /*
+    ---------------------------------------------
+    DOS OJOS
+    ---------------------------------------------
+    */
+
+    const half =
+        width / 2;
 
 
-        startScreen.style.display="none";
+    /*
+    OJO IZQUIERDO
+    */
+
+    ctx.save();
+
+    ctx.beginPath();
+
+    ctx.rect(
+        0,
+        0,
+        half,
+        height
+    );
+
+    ctx.clip();
 
 
-        statusText.textContent =
-            "CÁMARA ACTIVA";
+    drawEye(
+        0,
+        half
+    );
 
 
-        /*
-        Pantalla completa
-        */
-
-        try{
-
-            if(document.documentElement.requestFullscreen){
-
-                await document.documentElement.requestFullscreen();
-
-            }
-
-        }catch(e){}
+    ctx.restore();
 
 
-        /*
-        Iniciar detector
-        */
+    /*
+    OJO DERECHO
+    */
 
-        camera =
-            new Camera(
-                video,
-                {
+    ctx.save();
 
-                    onFrame: async function(){
+    ctx.beginPath();
 
-                        await hands.send({
-                            image:video
-                        });
+    ctx.rect(
+        half,
+        0,
+        half,
+        height
+    );
 
-                    },
-
-                    width:1280,
-                    height:720
-
-                }
-            );
+    ctx.clip();
 
 
-        camera.start();
+    drawEye(
+        half,
+        half
+    );
 
 
-    }catch(error){
+    ctx.restore();
 
-        console.error(error);
 
-        statusText.textContent =
-            "ERROR DE CÁMARA";
+    /*
+    ---------------------------------------------
+    HUESOS DIGITALES
+    ---------------------------------------------
+    */
 
-        alert(
-            "No se pudo acceder a la cámara.\n\n"+
-            "Comprueba que has permitido el acceso "+
-            "a la cámara y que el navegador permite "+
-            "cámara en esta página."
-        );
+    drawHands(
+        0,
+        half
+    );
 
-    }
+
+    drawHands(
+        half,
+        half
+    );
+
+
+    /*
+    ---------------------------------------------
+    PROCESAMIENTO DE MANOS
+    ---------------------------------------------
+    */
+
+    processHands(timestamp);
+
+
+    /*
+    ---------------------------------------------
+    SIGUIENTE FRAME
+    ---------------------------------------------
+    */
+
+    requestAnimationFrame(
+        render
+    );
 
 }
 
 
-/*
-====================================================
-BOTÓN
-====================================================
-*/
+/* =====================================================
+   BOTÓN
+===================================================== */
 
 startButton.addEventListener(
     "click",
     startCamera
 );
 
-
-/*
-====================================================
-INICIAR RENDER
-====================================================
-*/
-
-drawCamera();
-
 </script>
 
 </body>
-  </html>
+      </html>
