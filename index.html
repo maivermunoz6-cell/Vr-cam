@@ -1,1885 +1,473 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-
 <meta charset="UTF-8">
-
 <meta name="viewport"
-content="width=device-width,
-initial-scale=1.0,
-maximum-scale=1.0,
-user-scalable=no">
+      content="width=device-width,initial-scale=1.0,user-scalable=no">
 
-<title>VR Quest Hand Browser</title>
+<title>AR 3D Browser</title>
 
 <style>
-
-/* =====================================================
-   BASE
-===================================================== */
-
 *{
     box-sizing:border-box;
-    margin:0;
-    padding:0;
 }
 
-html,
-body{
-
+html,body{
+    margin:0;
     width:100%;
     height:100%;
-
     overflow:hidden;
-
     background:#000;
+    font-family:Arial,sans-serif;
+}
 
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
-
+body{
     touch-action:none;
 }
 
-
-/* =====================================================
-   VR
-===================================================== */
-
-#vr{
-
+#app{
     position:fixed;
-
     inset:0;
-
-    width:100vw;
-    height:100vh;
-
-    display:flex;
-
-    background:#000;
-
-}
-
-
-.eye{
-
-    position:relative;
-
-    width:50%;
-    height:100%;
-
     overflow:hidden;
-
-    background:#000;
-
 }
 
-
-.eye video{
-
-    position:absolute;
-
-    inset:0;
-
-    width:100%;
-    height:100%;
-
-    object-fit:cover;
-
+canvas{
     display:block;
-
-}
-
-
-/* =====================================================
-   MANOS
-===================================================== */
-
-.handCanvas{
-
-    position:absolute;
-
-    inset:0;
-
     width:100%;
     height:100%;
-
-    pointer-events:none;
-
-    z-index:10;
-
 }
 
-
-/* =====================================================
-   SEPARADOR
-===================================================== */
-
-#centerLine{
-
+#ui{
     position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:20;
+}
 
-    top:0;
+#top{
+    position:absolute;
+    top:18px;
     left:50%;
+    transform:translateX(-50%);
 
-    width:3px;
-    height:100%;
+    padding:12px 20px;
 
-    transform:
-        translateX(-50%);
+    border:1px solid rgba(0,255,255,.55);
+    border-radius:16px;
 
-    background:#000;
+    background:rgba(0,0,0,.55);
+    backdrop-filter:blur(12px);
+
+    color:#00ffff;
+
+    font-size:14px;
+    letter-spacing:3px;
+
+    white-space:nowrap;
+}
+
+#status{
+    position:absolute;
+    bottom:25px;
+    left:50%;
+    transform:translateX(-50%);
+
+    padding:12px 18px;
+
+    background:rgba(0,0,0,.65);
+
+    border:1px solid rgba(255,255,255,.15);
+
+    border-radius:14px;
+
+    color:white;
+
+    font-size:13px;
+
+    text-align:center;
+
+    max-width:90%;
+}
+
+#start{
+    position:fixed;
+    inset:0;
 
     z-index:100;
 
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+
+    background:
+        radial-gradient(
+            circle at center,
+            #18242b,
+            #030506 70%
+        );
+
+    color:white;
+
+    text-align:center;
+
+    padding:30px;
 }
 
+#start h1{
+    font-size:38px;
+    letter-spacing:5px;
+    margin:0 0 12px;
+}
 
-/* =====================================================
-   INTERFAZ VR
-===================================================== */
+#start p{
+    max-width:560px;
+    color:#aaa;
+    line-height:1.6;
+    margin-bottom:25px;
+}
 
-#vrUI{
+button{
+    min-width:180px;
+    min-height:52px;
 
+    border:1px solid rgba(0,255,255,.6);
+
+    border-radius:15px;
+
+    background:#111a1e;
+
+    color:#fff;
+
+    font-size:16px;
+
+    padding:12px 22px;
+}
+
+button:active{
+    transform:scale(.96);
+}
+
+#arButton{
+    display:none;
+}
+
+#fallback{
+    position:fixed;
+    left:50%;
+    bottom:90px;
+    transform:translateX(-50%);
+
+    z-index:80;
+
+    padding:10px 15px;
+
+    background:rgba(0,0,0,.65);
+
+    color:#bbb;
+
+    border-radius:10px;
+
+    font-size:11px;
+
+    text-align:center;
+
+    display:none;
+}
+
+#crosshair{
     position:fixed;
 
-    inset:0;
+    left:50%;
+    top:50%;
 
-    z-index:30;
+    width:18px;
+    height:18px;
+
+    transform:translate(-50%,-50%);
+
+    border:2px solid white;
+
+    border-radius:50%;
+
+    opacity:.8;
+
+    z-index:15;
 
     pointer-events:none;
 
-    perspective:1400px;
-
+    display:none;
 }
 
-
-/* =====================================================
-   VENTANA QUEST
-===================================================== */
-
-#questWindow{
+#crosshair::after{
+    content:"";
 
     position:absolute;
 
     left:50%;
     top:50%;
 
-    width:min(
-        680px,
-        70vw
-    );
+    width:4px;
+    height:4px;
 
-    height:min(
-        430px,
-        55vh
-    );
+    transform:translate(-50%,-50%);
 
-    transform:
-
-        translate(-50%,-50%)
-
-        rotateX(0deg)
-
-        rotateY(0deg)
-
-        translateZ(0px);
-
-    transform-style:preserve-3d;
-
-    background:
-
-        linear-gradient(
-            145deg,
-            rgba(35,38,45,.98),
-            rgba(10,11,15,.98)
-        );
-
-    border:
-
-        1px solid
-        rgba(255,255,255,.16);
-
-    border-radius:24px;
-
-    box-shadow:
-
-        0 25px 70px
-        rgba(0,0,0,.8),
-
-        0 0 35px
-        rgba(255,255,255,.05);
-
-    overflow:hidden;
-
-    pointer-events:auto;
-
-    transition:
-
-        box-shadow .15s ease;
-
-}
-
-
-/* =====================================================
-   VENTANA AGARRADA
-===================================================== */
-
-#questWindow.grabbed{
-
-    box-shadow:
-
-        0 30px 90px
-        rgba(0,0,0,.9),
-
-        0 0 35px
-        rgba(0,220,255,.18);
-
-}
-
-
-/* =====================================================
-   BARRA SUPERIOR
-===================================================== */
-
-.questTop{
-
-    height:58px;
-
-    display:flex;
-
-    align-items:center;
-
-    gap:10px;
-
-    padding:
-
-        0 14px;
-
-    background:
-
-        rgba(28,30,36,.98);
-
-    border-bottom:
-
-        1px solid
-        rgba(255,255,255,.1);
-
-}
-
-
-/* =====================================================
-   BOTONES
-===================================================== */
-
-.questButton{
-
-    width:32px;
-    height:32px;
+    background:white;
 
     border-radius:50%;
-
-    border:none;
-
-    background:
-
-        rgba(255,255,255,.08);
-
-    color:#fff;
-
-    font-size:15px;
-
 }
-
-
-.questButton:active{
-
-    transform:scale(.9);
-
-}
-
-
-/* =====================================================
-   URL
-===================================================== */
-
-#urlBox{
-
-    flex:1;
-
-    height:38px;
-
-    display:flex;
-
-    align-items:center;
-
-    gap:8px;
-
-    padding:
-
-        0 12px;
-
-    background:
-
-        rgba(0,0,0,.38);
-
-    border:
-
-        1px solid
-        rgba(255,255,255,.08);
-
-    border-radius:12px;
-
-}
-
-
-#urlInput{
-
-    width:100%;
-
-    border:none;
-
-    outline:none;
-
-    background:transparent;
-
-    color:#eee;
-
-    font-size:14px;
-
-}
-
-
-#goButton{
-
-    width:35px;
-
-    height:30px;
-
-    border:none;
-
-    border-radius:8px;
-
-    background:#2b2d32;
-
-    color:#fff;
-
-}
-
-
-/* =====================================================
-   CONTENIDO
-===================================================== */
-
-#browserArea{
-
-    position:absolute;
-
-    left:0;
-    right:0;
-
-    top:58px;
-    bottom:0;
-
-    background:#111;
-
-}
-
-
-#browserFrame{
-
-    width:100%;
-    height:100%;
-
-    border:none;
-
-    background:#fff;
-
-}
-
-
-/* =====================================================
-   PANTALLA DE INICIO
-===================================================== */
-
-#questHome{
-
-    position:absolute;
-
-    inset:0;
-
-    display:flex;
-
-    flex-direction:column;
-
-    align-items:center;
-
-    justify-content:center;
-
-    background:
-
-        radial-gradient(
-            circle at 50% 35%,
-            #252a35,
-            #111318 45%,
-            #090a0d 100%
-        );
-
-    color:#fff;
-
-}
-
-
-#questLogo{
-
-    width:80px;
-    height:80px;
-
-    border-radius:25px;
-
-    background:
-
-        linear-gradient(
-            145deg,
-            #fff,
-            #9ba1ab
-        );
-
-    box-shadow:
-
-        0 15px 35px
-        rgba(0,0,0,.6);
-
-    margin-bottom:22px;
-
-}
-
-
-#questHome h1{
-
-    font-size:27px;
-
-    margin-bottom:10px;
-
-}
-
-
-#questHome p{
-
-    color:#aeb3bc;
-
-    font-size:14px;
-
-}
-
-
-/* =====================================================
-   INFORMACIÓN
-===================================================== */
-
-#info{
-
-    position:fixed;
-
-    top:14px;
-    left:50%;
-
-    transform:
-        translateX(-50%);
-
-    z-index:150;
-
-    color:#00ffff;
-
-    background:
-        rgba(0,0,0,.55);
-
-    border:
-
-        1px solid
-        rgba(0,255,255,.4);
-
-    border-radius:10px;
-
-    padding:
-        7px 12px;
-
-    font-size:11px;
-
-    letter-spacing:2px;
-
-    pointer-events:none;
-
-}
-
-
-#fps{
-
-    position:fixed;
-
-    top:14px;
-    right:12px;
-
-    z-index:150;
-
-    padding:7px 9px;
-
-    background:
-        rgba(0,0,0,.55);
-
-    border:
-        1px solid
-        rgba(0,255,100,.3);
-
-    border-radius:7px;
-
-    color:#00ff88;
-
-    font:
-
-        11px monospace;
-
-    pointer-events:none;
-
-}
-
-
-#status{
-
-    position:fixed;
-
-    bottom:14px;
-    left:50%;
-
-    transform:
-        translateX(-50%);
-
-    z-index:150;
-
-    color:#fff;
-
-    font-size:12px;
-
-    text-shadow:
-        0 0 8px #000;
-
-    pointer-events:none;
-
-}
-
-
-/* =====================================================
-   PANTALLA INICIAL
-===================================================== */
-
-#startScreen{
-
-    position:fixed;
-
-    inset:0;
-
-    z-index:500;
-
-    display:flex;
-
-    flex-direction:column;
-
-    justify-content:center;
-
-    align-items:center;
-
-    text-align:center;
-
-    background:
-
-        radial-gradient(
-            circle,
-            #1a202b,
-            #050608 70%
-        );
-
-    color:white;
-
-}
-
-
-#startScreen h1{
-
-    font-size:40px;
-
-    letter-spacing:5px;
-
-    color:white;
-
-    margin-bottom:15px;
-
-}
-
-
-#startScreen p{
-
-    width:85%;
-
-    max-width:550px;
-
-    line-height:1.6;
-
-    color:#aaa;
-
-    margin-bottom:25px;
-
-}
-
-
-#startButton{
-
-    padding:
-
-        16px 30px;
-
-    border:
-
-        1px solid
-        rgba(255,255,255,.5);
-
-    border-radius:14px;
-
-    background:#20242c;
-
-    color:white;
-
-    font-size:16px;
-
-}
-
 </style>
-
 </head>
-
 
 <body>
 
+<div id="app"></div>
 
-<!-- ==================================================
-     CÁMARAS
-================================================== -->
+<div id="ui">
 
-<div id="vr">
-
-
-    <div class="eye">
-
-        <video
-            id="leftVideo"
-            autoplay
-            muted
-            playsinline>
-        </video>
-
-        <canvas
-            id="leftHands"
-            class="handCanvas">
-        </canvas>
-
+    <div id="top">
+        AR 3D BROWSER
     </div>
 
-
-    <div class="eye">
-
-        <video
-            id="rightVideo"
-            autoplay
-            muted
-            playsinline>
-        </video>
-
-        <canvas
-            id="rightHands"
-            class="handCanvas">
-        </canvas>
-
+    <div id="status">
+        Pulsa "ENTRAR EN AR"
     </div>
 
-
 </div>
 
+<div id="crosshair"></div>
 
-<div id="centerLine"></div>
-
-
-<!-- ==================================================
-     UI QUEST
-================================================== -->
-
-<div id="vrUI">
-
-
-    <div id="questWindow">
-
-
-        <!-- BARRA -->
-
-        <div
-            class="questTop"
-            id="windowBar">
-
-
-            <button
-                class="questButton"
-                id="backButton">
-
-                ‹
-
-            </button>
-
-
-            <button
-                class="questButton"
-                id="forwardButton">
-
-                ›
-
-            </button>
-
-
-            <button
-                class="questButton"
-                id="reloadButton">
-
-                ↻
-
-            </button>
-
-
-            <div id="urlBox">
-
-                <span>🌐</span>
-
-                <input
-                    id="urlInput"
-                    value="https://example.com"
-                    autocomplete="off">
-
-                <button id="goButton">
-
-                    ↵
-
-                </button>
-
-            </div>
-
-
-        </div>
-
-
-        <!-- NAVEGADOR -->
-
-        <div id="browserArea">
-
-
-            <div id="questHome">
-
-                <div id="questLogo"></div>
-
-                <h1>
-                    Meta Browser
-                </h1>
-
-                <p>
-                    Haz pinch sobre la ventana
-                    para moverla.
-                </p>
-
-            </div>
-
-
-            <iframe
-                id="browserFrame"
-                src="about:blank">
-            </iframe>
-
-
-        </div>
-
-
-    </div>
-
-
+<div id="fallback">
+    Este dispositivo no tiene WebXR AR.
 </div>
 
+<div id="start">
 
-<!-- ==================================================
-     INFORMACIÓN
-================================================== -->
-
-<div id="info">
-
-    QUEST HAND BROWSER
-
-</div>
-
-
-<div id="fps">
-
-    VIDEO: -- | HAND: --
-
-</div>
-
-
-<div id="status">
-
-    HAZ PINCH PARA AGARRAR
-
-</div>
-
-
-<!-- ==================================================
-     INICIO
-================================================== -->
-
-<div id="startScreen">
-
-    <h1>
-        META VR
-    </h1>
+    <h1>AR WORLD</h1>
 
     <p>
-
-        Cámara trasera + seguimiento de manos.
-        Haz pinch sobre la ventana para agarrarla
-        y moverla.
-
+        Una interfaz 3D flotante en realidad aumentada.
+        El navegador AR utilizará la cámara del dispositivo
+        y WebXR cuando esté disponible.
     </p>
 
-
-    <button id="startButton">
-
-        ACTIVAR VR
-
+    <button id="arButton">
+        ENTRAR EN AR
     </button>
 
 </div>
 
 
-<!-- ==================================================
-     MEDIAPIPE
-================================================== -->
+<script type="module">
 
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+/*
+==========================================================
+ THREE.JS
+==========================================================
+*/
 
+import * as THREE from
+"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 
-<script>
-
-/* =====================================================
-   ELEMENTOS
-===================================================== */
-
-const leftVideo =
-    document.getElementById(
-        "leftVideo"
-    );
-
-const rightVideo =
-    document.getElementById(
-        "rightVideo"
-    );
-
-const leftCanvas =
-    document.getElementById(
-        "leftHands"
-    );
-
-const rightCanvas =
-    document.getElementById(
-        "rightHands"
-    );
-
-const leftCtx =
-    leftCanvas.getContext("2d");
-
-const rightCtx =
-    rightCanvas.getContext("2d");
-
-const questWindow =
-    document.getElementById(
-        "questWindow"
-    );
-
-const windowBar =
-    document.getElementById(
-        "windowBar"
-    );
-
-const browserFrame =
-    document.getElementById(
-        "browserFrame"
-    );
-
-const questHome =
-    document.getElementById(
-        "questHome"
-    );
-
-const urlInput =
-    document.getElementById(
-        "urlInput"
-    );
-
-const goButton =
-    document.getElementById(
-        "goButton"
-    );
-
-const reloadButton =
-    document.getElementById(
-        "reloadButton"
-    );
-
-const startButton =
-    document.getElementById(
-        "startButton"
-    );
-
-const startScreen =
-    document.getElementById(
-        "startScreen"
-    );
-
-const statusText =
-    document.getElementById(
-        "status"
-    );
-
-const fpsText =
-    document.getElementById(
-        "fps"
-    );
-
-
-/* =====================================================
-   CONFIGURACIÓN
-===================================================== */
+import {ARButton} from
+"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/webxr/ARButton.js";
 
 
 /*
-   El modelo usa precisión alta.
+==========================================================
+ VARIABLES
+==========================================================
 */
 
-const HAND_INTERVAL = 45;
+let scene;
+
+let camera;
+
+let renderer;
+
+let xrSession = null;
+
+let referenceSpace = null;
+
+let viewerSpace = null;
+
+let hitTestSource = null;
+
+let hitTestReady = false;
+
+let placed = false;
+
+let browserCube;
+
+let browserScreen;
+
+let cursor;
 
 
 /*
-   Suavizado de la mano.
+==========================================================
+ ELEMENTOS HTML
+==========================================================
 */
 
-const SMOOTHING = .42;
+const app =
+document.getElementById("app");
+
+const start =
+document.getElementById("start");
+
+const arButton =
+document.getElementById("arButton");
+
+const status =
+document.getElementById("status");
+
+const crosshair =
+document.getElementById("crosshair");
+
+const fallback =
+document.getElementById("fallback");
 
 
 /*
-   Distancia para considerar pinch.
+==========================================================
+ ESCENA
+==========================================================
 */
 
-const PINCH_DISTANCE = .065;
+scene =
+new THREE.Scene();
 
 
 /*
-   Escala del movimiento de la mano
-   respecto al movimiento de la ventana.
+==========================================================
+ CÁMARA
+==========================================================
 */
 
-const MOVE_SCALE = 2.2;
-
-
-/* =====================================================
-   VARIABLES
-===================================================== */
-
-let stream = null;
-
-let running = false;
-
-let detectorBusy = false;
-
-let lastDetection = 0;
-
-let detectedHands = [];
-
-let smoothHand = null;
+camera =
+new THREE.PerspectiveCamera(
+    70,
+    window.innerWidth /
+    window.innerHeight,
+    0.01,
+    100
+);
 
 
 /*
-   Estado de pinch.
+==========================================================
+ RENDERER
+==========================================================
 */
 
-let pinching = false;
+renderer =
+new THREE.WebGLRenderer({
 
-let dragging = false;
+    antialias:true,
 
+    alpha:true,
 
-/*
-   Posición anterior del pinch.
-*/
-
-let previousPinch = null;
-
-
-/*
-   Posición 3D de la ventana.
-*/
-
-let windowX = 0;
-
-let windowY = 0;
-
-let windowZ = 0;
-
-
-/*
-   Rotación.
-*/
-
-let windowRX = 0;
-
-let windowRY = 0;
-
-
-/*
-   FPS.
-*/
-
-let renderFrames = 0;
-
-let handFrames = 0;
-
-let lastFPS =
-    performance.now();
-
-
-/* =====================================================
-   MEDIAPIPE
-===================================================== */
-
-const hands =
-    new Hands({
-
-        locateFile:function(file){
-
-            return "https://cdn.jsdelivr.net/npm/@mediapipe/hands/" + file;
-
-        }
-
-    });
-
-
-hands.setOptions({
-
-    /*
-       Más precisión.
-    */
-
-    maxNumHands:1,
-
-    modelComplexity:1,
-
-    minDetectionConfidence:.80,
-
-    minTrackingConfidence:.80
+    powerPreference:"high-performance"
 
 });
 
 
-/* =====================================================
-   RESULTADOS
-===================================================== */
+renderer.setPixelRatio(
+    Math.min(
+        window.devicePixelRatio,
+        2
+    )
+);
 
-hands.onResults(
-    function(results){
+renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+);
 
-        handFrames++;
+renderer.xr.enabled = true;
 
+renderer.setClearColor(
+    0x000000,
+    0
+);
 
-        if(
-            results &&
-            results.multiHandLandmarks &&
-            results.multiHandLandmarks.length
-        ){
+renderer.outputColorSpace =
+THREE.SRGBColorSpace;
 
-            detectedHands =
-                results.multiHandLandmarks[0];
+renderer.toneMapping =
+THREE.ACESFilmicToneMapping;
 
-        }else{
+renderer.toneMappingExposure =
+1;
 
-            detectedHands =
-                null;
-
-        }
-
-    }
+app.appendChild(
+    renderer.domElement
 );
 
 
-/* =====================================================
-   CANVAS
-===================================================== */
+/*
+==========================================================
+ LUCES
+==========================================================
+*/
 
-function resizeCanvas(){
+const ambient =
+new THREE.HemisphereLight(
+    0xffffff,
+    0x222222,
+    2
+);
 
-    const dpr =
-        Math.min(
-            window.devicePixelRatio || 1,
-            1.25
-        );
-
-
-    const width =
-        Math.floor(
-            window.innerWidth /
-            2 *
-            dpr
-        );
-
-
-    const height =
-        Math.floor(
-            window.innerHeight *
-            dpr
-        );
-
-
-    leftCanvas.width =
-        width;
-
-    leftCanvas.height =
-        height;
-
-
-    rightCanvas.width =
-        width;
-
-    rightCanvas.height =
-        height;
-
-}
-
-
-window.addEventListener(
-    "resize",
-    resizeCanvas
+scene.add(
+    ambient
 );
 
 
-resizeCanvas();
+const light =
+new THREE.DirectionalLight(
+    0xffffff,
+    2
+);
 
+light.position.set(
+    2,
+    4,
+    2
+);
 
-/* =====================================================
-   CÁMARA
-===================================================== */
+scene.add(
+    light
+);
 
-async function startCamera(){
 
-    try{
+/*
+==========================================================
+ CREAR TEXTURA DEL NAVEGADOR
+==========================================================
+*/
 
-        statusText.textContent =
-            "ACTIVANDO CÁMARA...";
+function createBrowserTexture(){
 
+    const canvas =
+    document.createElement("canvas");
 
-        stream =
-            await navigator
-            .mediaDevices
-            .getUserMedia({
+    canvas.width = 1200;
 
-                video:{
+    canvas.height = 700;
 
-                    facingMode:{
-                        ideal:"environment"
-                    },
-
-                    width:{
-                        ideal:1280
-                    },
-
-                    height:{
-                        ideal:720
-                    },
-
-                    frameRate:{
-                        ideal:60,
-                        min:30,
-                        max:60
-                    }
-
-                },
-
-                audio:false
-
-            });
-
-
-        leftVideo.srcObject =
-            stream;
-
-        rightVideo.srcObject =
-            stream;
-
-
-        await leftVideo.play();
-
-        await rightVideo.play();
-
-
-        /*
-           Intentar utilizar 60 FPS.
-        */
-
-        const track =
-            stream.getVideoTracks()[0];
-
-
-        try{
-
-            await track.applyConstraints({
-
-                frameRate:{
-                    ideal:60,
-                    max:60
-                }
-
-            });
-
-        }catch(e){
-
-            console.log(e);
-
-        }
-
-
-        running = true;
-
-
-        startScreen.style.display =
-            "none";
-
-
-        statusText.textContent =
-            "HAZ PINCH SOBRE LA VENTANA";
-
-
-        /*
-           Pantalla completa.
-        */
-
-        try{
-
-            await document
-                .documentElement
-                .requestFullscreen();
-
-        }catch(e){}
-
-
-        requestAnimationFrame(
-            render
-        );
-
-
-    }catch(error){
-
-        console.error(error);
-
-
-        alert(
-            "No se pudo activar la cámara:\n\n"
-            +
-            error.message
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   DETECCIÓN
-===================================================== */
-
-async function detectHands(time){
-
-    if(!running){
-
-        return;
-
-    }
-
-
-    if(detectorBusy){
-
-        return;
-
-    }
-
-
-    if(
-        time -
-        lastDetection <
-        HAND_INTERVAL
-    ){
-
-        return;
-
-    }
-
-
-    if(
-        leftVideo.readyState < 2
-    ){
-
-        return;
-
-    }
-
-
-    lastDetection =
-        time;
-
-
-    detectorBusy = true;
-
-
-    try{
-
-        await hands.send({
-
-            image:leftVideo
-
-        });
-
-    }catch(error){
-
-        console.log(error);
-
-    }
-
-
-    detectorBusy = false;
-
-}
-
-
-/* =====================================================
-   SUAVIZAR
-===================================================== */
-
-function smoothLandmarks(){
-
-    if(!detectedHands){
-
-        smoothHand =
-            null;
-
-        return;
-
-    }
-
-
-    if(!smoothHand){
-
-        smoothHand =
-            detectedHands.map(
-
-                p => ({
-
-                    x:p.x,
-                    y:p.y,
-                    z:p.z
-
-                })
-
-            );
-
-        return;
-
-    }
-
-
-    for(
-        let i=0;
-        i<detectedHands.length;
-        i++
-    ){
-
-        const target =
-            detectedHands[i];
-
-        const current =
-            smoothHand[i];
-
-
-        current.x +=
-            (
-                target.x -
-                current.x
-            )
-            *
-            SMOOTHING;
-
-
-        current.y +=
-            (
-                target.y -
-                current.y
-            )
-            *
-            SMOOTHING;
-
-
-        current.z +=
-            (
-                target.z -
-                current.z
-            )
-            *
-            SMOOTHING;
-
-    }
-
-}
-
-
-/* =====================================================
-   DISTANCIA
-===================================================== */
-
-function distance(a,b){
-
-    const dx =
-        a.x-b.x;
-
-    const dy =
-        a.y-b.y;
-
-    const dz =
-        (a.z-b.z)*.5;
-
-
-    return Math.sqrt(
-
-        dx*dx+
-        dy*dy+
-        dz*dz
-
-    );
-
-}
-
-
-/* =====================================================
-   PINCH
-===================================================== */
-
-function isPinching(hand){
-
-    if(!hand){
-
-        return false;
-
-    }
-
-
-    return (
-
-        distance(
-            hand[4],
-            hand[8]
-        )
-        <
-        PINCH_DISTANCE
-
-    );
-
-}
-
-
-/* =====================================================
-   POSICIÓN DEL PINCH
-===================================================== */
-
-function getPinchPosition(hand){
-
-    return {
-
-        x:
-            (
-                hand[4].x+
-                hand[8].x
-            )/2,
-
-        y:
-            (
-                hand[4].y+
-                hand[8].y
-            )/2
-
-    };
-
-}
-
-
-/* =====================================================
-   APLICAR TRANSFORMACIÓN
-===================================================== */
-
-function updateWindowTransform(){
-
-    questWindow.style.transform =
-
-        "translate(" +
-
-        "calc(-50% + " +
-        windowX +
-        "px)," +
-
-        "calc(-50% + " +
-        windowY +
-        "px)" +
-
-        ") " +
-
-        "rotateX(" +
-        windowRX +
-        "deg) " +
-
-        "rotateY(" +
-        windowRY +
-        "deg) " +
-
-        "translateZ(" +
-        windowZ +
-        "px)";
-
-}
-
-
-/* =====================================================
-   DETECTAR POSICIÓN DE LA VENTANA
-===================================================== */
-
-function getWindowRect(){
-
-    return questWindow.getBoundingClientRect();
-
-}
-
-
-/* =====================================================
-   PINCH SOBRE VENTANA
-===================================================== */
-
-function pinchIsInsideWindow(pos){
-
-    const rect =
-        getWindowRect();
+    const ctx =
+    canvas.getContext("2d");
 
 
     /*
-       Convertir coordenadas normalizadas
-       de MediaPipe a pantalla.
-
-       La cámara trasera puede estar
-       espejada dependiendo del dispositivo.
+    Fondo
     */
 
-    const screenX =
-        (1-pos.x) *
-        window.innerWidth;
+    ctx.fillStyle =
+    "#101216";
 
-
-    const screenY =
-        pos.y *
-        window.innerHeight;
-
-
-    return (
-
-        screenX >= rect.left &&
-
-        screenX <= rect.right &&
-
-        screenY >= rect.top &&
-
-        screenY <= rect.bottom
-
-    );
-
-}
-
-
-/* =====================================================
-   INTERACCIÓN
-===================================================== */
-
-function updateInteraction(){
-
-    if(!smoothHand){
-
-        if(dragging){
-
-            dragging = false;
-
-            questWindow.classList
-                .remove("grabbed");
-
-        }
-
-        previousPinch = null;
-
-        return;
-
-    }
-
-
-    const pinch =
-        isPinching(
-            smoothHand
-        );
-
-
-    const pos =
-        getPinchPosition(
-            smoothHand
-        );
-
-
-    /*
-    =================================================
-    INICIO DEL PINCH
-    =================================================
-    */
-
-    if(
-        pinch &&
-        !pinching
-    ){
-
-        pinching = true;
-
-
-        /*
-           ¿El dedo está sobre la ventana?
-        */
-
-        if(
-            pinchIsInsideWindow(
-                pos
-            )
-        ){
-
-            dragging = true;
-
-
-            questWindow.classList
-                .add("grabbed");
-
-
-            previousPinch = {
-
-                x:pos.x,
-
-                y:pos.y
-
-            };
-
-
-            statusText.textContent =
-                "VENTANA AGARRADA";
-
-        }
-
-    }
-
-
-    /*
-    =================================================
-    MOVER VENTANA
-    =================================================
-    */
-
-    if(
-        pinch &&
-        dragging &&
-        previousPinch
-    ){
-
-        const dx =
-            pos.x -
-            previousPinch.x;
-
-
-        const dy =
-            pos.y -
-            previousPinch.y;
-
-
-        /*
-           Movimiento horizontal.
-        */
-
-        windowX +=
-            dx *
-            window.innerWidth *
-            MOVE_SCALE;
-
-
-        /*
-           Movimiento vertical.
-        */
-
-        windowY +=
-            dy *
-            window.innerHeight *
-            MOVE_SCALE;
-
-
-        /*
-           Limitar para no perder la ventana.
-        */
-
-        const maxX =
-            window.innerWidth *
-            .40;
-
-
-        const maxY =
-            window.innerHeight *
-            .40;
-
-
-        windowX =
-            Math.max(
-                -maxX,
-                Math.min(
-                    maxX,
-                    windowX
-                )
-            );
-
-
-        windowY =
-            Math.max(
-                -maxY,
-                Math.min(
-                    maxY,
-                    windowY
-                )
-            );
-
-
-        updateWindowTransform();
-
-
-        previousPinch = {
-
-            x:pos.x,
-
-            y:pos.y
-
-        };
-
-    }
-
-
-    /*
-    =================================================
-    SOLTAR
-    =================================================
-    */
-
-    if(
-        !pinch &&
-        pinching
-    ){
-
-        pinching = false;
-
-
-        if(dragging){
-
-            dragging = false;
-
-            questWindow.classList
-                .remove("grabbed");
-
-            statusText.textContent =
-                "HAZ PINCH SOBRE LA VENTANA";
-
-        }
-
-
-        previousPinch = null;
-
-    }
-
-}
-
-
-/* =====================================================
-   DIBUJAR MANOS
-===================================================== */
-
-const connections = [
-
-    [0,1],
-    [1,2],
-    [2,3],
-    [3,4],
-
-    [0,5],
-    [5,6],
-    [6,7],
-    [7,8],
-
-    [5,9],
-    [9,10],
-    [10,11],
-    [11,12],
-
-    [9,13],
-    [13,14],
-    [14,15],
-    [15,16],
-
-    [13,17],
-    [17,18],
-    [18,19],
-    [19,20],
-
-    [0,17]
-
-];
-
-
-function drawHand(
-    ctx,
-    canvas
-){
-
-    if(!smoothHand){
-
-        ctx.clearRect(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
-
-        return;
-
-    }
-
-
-    ctx.clearRect(
+    ctx.fillRect(
         0,
         0,
         canvas.width,
@@ -1888,314 +476,968 @@ function drawHand(
 
 
     /*
-       HUESOS
-    */
-
-    ctx.save();
-
-
-    ctx.strokeStyle =
-        "rgba(0,255,255,.8)";
-
-    ctx.lineWidth =
-        2.5;
-
-    ctx.shadowBlur =
-        8;
-
-    ctx.shadowColor =
-        "#00ffff";
-
-
-    for(
-        const c
-        of connections
-    ){
-
-        const a =
-            smoothHand[c[0]];
-
-        const b =
-            smoothHand[c[1]];
-
-
-        ctx.beginPath();
-
-
-        ctx.moveTo(
-
-            (1-a.x) *
-            canvas.width,
-
-            a.y *
-            canvas.height
-
-        );
-
-
-        ctx.lineTo(
-
-            (1-b.x) *
-            canvas.width,
-
-            b.y *
-            canvas.height
-
-        );
-
-
-        ctx.stroke();
-
-    }
-
-
-    /*
-       PUNTOS
+    Barra superior
     */
 
     ctx.fillStyle =
-        "#fff";
+    "#1d2027";
 
-    ctx.shadowBlur =
-        14;
+    ctx.fillRect(
+        0,
+        0,
+        1200,
+        100
+    );
 
-    ctx.shadowColor =
-        "#00ffff";
+
+    /*
+    Botones
+    */
+
+    const buttons = [
+        ["‹",70],
+        ["›",135],
+        ["↻",200]
+    ];
+
+
+    ctx.font =
+    "bold 42px Arial";
+
+    ctx.textAlign =
+    "center";
+
+    ctx.textBaseline =
+    "middle";
 
 
     for(
-        const p
-        of smoothHand
+        const b of buttons
     ){
+
+        ctx.fillStyle =
+        "#30343d";
 
         ctx.beginPath();
 
-
         ctx.arc(
-
-            (1-p.x) *
-            canvas.width,
-
-            p.y *
-            canvas.height,
-
-            3.5,
-
+            b[1],
+            50,
+            31,
             0,
-
             Math.PI*2
-
         );
-
 
         ctx.fill();
 
-    }
 
+        ctx.fillStyle =
+        "#ffffff";
 
-    ctx.restore();
-
-}
-
-
-/* =====================================================
-   BOTONES DEL NAVEGADOR
-===================================================== */
-
-goButton.addEventListener(
-    "click",
-    loadURL
-);
-
-
-urlInput.addEventListener(
-    "keydown",
-    function(e){
-
-        if(
-            e.key === "Enter"
-        ){
-
-            loadURL();
-
-        }
-
-    }
-);
-
-
-function loadURL(){
-
-    let url =
-        urlInput.value.trim();
-
-
-    if(!url){
-
-        return;
-
-    }
-
-
-    if(
-        !/^https?:\/\//i.test(url)
-    ){
-
-        url =
-            "https://" +
-            url;
+        ctx.fillText(
+            b[0],
+            b[1],
+            51
+        );
 
     }
 
 
     /*
-       Mostrar iframe.
+    Barra URL
     */
 
-    questHome.style.display =
-        "none";
+    ctx.fillStyle =
+    "#0b0d11";
+
+    roundRect(
+        ctx,
+        260,
+        18,
+        850,
+        64,
+        20
+    );
+
+    ctx.fill();
 
 
-    browserFrame.style.display =
-        "block";
+    ctx.fillStyle =
+    "#00eaff";
 
+    ctx.font =
+    "28px Arial";
 
-    browserFrame.src =
-        url;
+    ctx.textAlign =
+    "left";
 
-}
-
-
-reloadButton.addEventListener(
-    "click",
-    function(){
-
-        try{
-
-            browserFrame
-                .contentWindow
-                .location
-                .reload();
-
-        }catch(e){
-
-            browserFrame.src =
-                browserFrame.src;
-
-        }
-
-    }
-);
-
-
-/* =====================================================
-   RENDER
-===================================================== */
-
-function render(time){
-
-    if(!running){
-
-        return;
-
-    }
-
-
-    /*
-       Detección.
-    */
-
-    detectHands(time);
-
-
-    /*
-       Suavizado.
-    */
-
-    smoothLandmarks();
-
-
-    /*
-       Interacción.
-    */
-
-    updateInteraction();
-
-
-    /*
-       Dibujar manos.
-    */
-
-    drawHand(
-        leftCtx,
-        leftCanvas
+    ctx.fillText(
+        "🌐",
+        290,
+        51
     );
 
 
-    drawHand(
-        rightCtx,
-        rightCanvas
+    ctx.fillStyle =
+    "#eeeeee";
+
+    ctx.font =
+    "25px Arial";
+
+    ctx.fillText(
+        "https://example.com",
+        335,
+        51
     );
 
 
     /*
-       FPS.
+    Contenido
     */
 
-    renderFrames++;
+    ctx.fillStyle =
+    "#16191f";
+
+    ctx.fillRect(
+        0,
+        100,
+        1200,
+        600
+    );
 
 
-    const now =
-        performance.now();
+    /*
+    Logo
+    */
+
+    ctx.fillStyle =
+    "#eeeeee";
+
+    roundRect(
+        ctx,
+        500,
+        185,
+        200,
+        110,
+        35
+    );
+
+    ctx.fill();
 
 
-    if(
-        now-lastFPS >= 1000
-    ){
+    /*
+    Título
+    */
 
-        fpsText.textContent =
-            "VIDEO: " +
-            renderFrames +
-            " | HAND: " +
-            handFrames;
+    ctx.fillStyle =
+    "#ffffff";
+
+    ctx.font =
+    "bold 58px Arial";
+
+    ctx.textAlign =
+    "center";
+
+    ctx.fillText(
+        "AR Browser",
+        600,
+        400
+    );
 
 
-        renderFrames = 0;
+    /*
+    Texto
+    */
 
-        handFrames = 0;
+    ctx.fillStyle =
+    "#aeb4bd";
 
-        lastFPS = now;
+    ctx.font =
+    "28px Arial";
 
-    }
+    ctx.fillText(
+        "Ventana 3D flotante",
+        600,
+        450
+    );
 
 
-    requestAnimationFrame(
-        render
+    ctx.font =
+    "22px Arial";
+
+    ctx.fillStyle =
+    "#00ffff";
+
+    ctx.fillText(
+        "PINCHA / AR / WEBXR",
+        600,
+        510
+    );
+
+
+    const texture =
+    new THREE.CanvasTexture(
+        canvas
+    );
+
+    texture.colorSpace =
+    THREE.SRGBColorSpace;
+
+    texture.anisotropy =
+    renderer.capabilities
+        .getMaxAnisotropy();
+
+    return texture;
+}
+
+
+/*
+==========================================================
+ ROUND RECT
+==========================================================
+*/
+
+function roundRect(
+    ctx,
+    x,
+    y,
+    w,
+    h,
+    r
+){
+
+    ctx.beginPath();
+
+    ctx.roundRect(
+        x,
+        y,
+        w,
+        h,
+        r
     );
 
 }
 
 
-/* =====================================================
-   INICIAR
-===================================================== */
+/*
+==========================================================
+ MATERIAL DEL CUBO
+==========================================================
+*/
 
-startButton.addEventListener(
-    "click",
-    startCamera
+const bodyMaterial =
+new THREE.MeshStandardMaterial({
+
+    color:0x15191f,
+
+    metalness:.35,
+
+    roughness:.35,
+
+    transparent:true,
+
+    opacity:.94
+
+});
+
+
+/*
+==========================================================
+ CUBO APLANADO
+==========================================================
+*/
+
+const cubeGeometry =
+new THREE.BoxGeometry(
+
+    1.75,
+    1.05,
+    0.09
+
+);
+
+
+browserCube =
+new THREE.Mesh(
+    cubeGeometry,
+    bodyMaterial
 );
 
 
 /*
-   Estado inicial.
+==========================================================
+ TEXTURA
+==========================================================
 */
 
-browserFrame.style.display =
+const browserTexture =
+createBrowserTexture();
+
+
+const screenGeometry =
+new THREE.PlaneGeometry(
+    1.67,
+    .97
+);
+
+
+const screenMaterial =
+new THREE.MeshBasicMaterial({
+
+    map:browserTexture,
+
+    transparent:true
+
+});
+
+
+browserScreen =
+new THREE.Mesh(
+    screenGeometry,
+    screenMaterial
+);
+
+
+browserScreen.position.z =
+0.052;
+
+
+browserCube.add(
+    browserScreen
+);
+
+
+/*
+==========================================================
+ BORDE NEÓN
+==========================================================
+*/
+
+const edgeGeometry =
+new THREE.EdgesGeometry(
+    cubeGeometry
+);
+
+
+const edgeMaterial =
+new THREE.LineBasicMaterial({
+
+    color:0x00ffff,
+
+    transparent:true,
+
+    opacity:.7
+
+});
+
+
+const edges =
+new THREE.LineSegments(
+    edgeGeometry,
+    edgeMaterial
+);
+
+
+browserCube.add(
+    edges
+);
+
+
+/*
+==========================================================
+ GRUPO
+==========================================================
+*/
+
+const browserGroup =
+new THREE.Group();
+
+browserGroup.add(
+    browserCube
+);
+
+scene.add(
+    browserGroup
+);
+
+
+/*
+==========================================================
+ POSICIÓN INICIAL
+==========================================================
+*/
+
+browserGroup.position.set(
+    0,
+    0,
+    -1.5
+);
+
+
+/*
+==========================================================
+ CURSOR DE HIT TEST
+==========================================================
+*/
+
+const cursorGeometry =
+new THREE.RingGeometry(
+    .035,
+    .045,
+    32
+);
+
+
+const cursorMaterial =
+new THREE.MeshBasicMaterial({
+
+    color:0x00ffff,
+
+    side:THREE.DoubleSide
+
+});
+
+
+cursor =
+new THREE.Mesh(
+    cursorGeometry,
+    cursorMaterial
+);
+
+cursor.rotation.x =
+-Math.PI/2;
+
+cursor.visible =
+false;
+
+scene.add(
+    cursor
+);
+
+
+/*
+==========================================================
+ COMPROBAR WEBXR
+==========================================================
+*/
+
+async function checkAR(){
+
+    if(
+        !navigator.xr
+    ){
+
+        status.textContent =
+        "WebXR no está disponible.";
+
+        fallback.style.display =
+        "block";
+
+        return;
+
+    }
+
+
+    try{
+
+        const supported =
+        await navigator.xr
+        .isSessionSupported(
+            "immersive-ar"
+        );
+
+
+        if(supported){
+
+            arButton.style.display =
+            "block";
+
+            status.textContent =
+            "WebXR AR disponible.";
+
+        }else{
+
+            status.textContent =
+            "Este dispositivo no soporta immersive-ar.";
+
+            fallback.style.display =
+            "block";
+
+        }
+
+    }catch(error){
+
+        console.error(error);
+
+        fallback.style.display =
+        "block";
+
+    }
+
+}
+
+
+checkAR();
+
+
+/*
+==========================================================
+ BOTÓN AR
+==========================================================
+*/
+
+arButton.addEventListener(
+    "click",
+    startAR
+);
+
+
+/*
+==========================================================
+ INICIAR AR
+==========================================================
+*/
+
+async function startAR(){
+
+    try{
+
+        status.textContent =
+        "INICIANDO AR...";
+
+
+        const session =
+        await navigator.xr.requestSession(
+            "immersive-ar",
+            {
+
+                /*
+                El espacio local es suficiente
+                para colocar nuestro objeto.
+
+                Hit-test y hand-tracking son
+                opcionales para permitir que AR
+                siga funcionando aunque un
+                dispositivo no los tenga.
+                */
+
+                requiredFeatures:[
+                    "local"
+                ],
+
+                optionalFeatures:[
+                    "hit-test",
+                    "hand-tracking",
+                    "dom-overlay"
+                ],
+
+                domOverlay:{
+                    root:
+                    document.getElementById(
+                        "ui"
+                    )
+                }
+
+            }
+        );
+
+
+        xrSession =
+        session;
+
+
+        renderer.xr.setReferenceSpaceType(
+            "local"
+        );
+
+
+        await renderer.xr.setSession(
+            session
+        );
+
+
+        referenceSpace =
+        await session.requestReferenceSpace(
+            "local"
+        );
+
+
+        /*
+        Espacio desde el visor.
+        */
+
+        try{
+
+            viewerSpace =
+            await session.requestReferenceSpace(
+                "viewer"
+            );
+
+        }catch(e){
+
+            viewerSpace =
+            null;
+
+        }
+
+
+        /*
+        Hit test.
+        */
+
+        if(
+            session.enabledFeatures &&
+            session.enabledFeatures
+                .includes("hit-test") &&
+            viewerSpace
+        ){
+
+            try{
+
+                hitTestSource =
+                await session
+                .requestHitTestSource({
+
+                    space:
+                    viewerSpace
+
+                });
+
+
+                hitTestReady =
+                true;
+
+            }catch(error){
+
+                console.log(
+                    "Hit-test no disponible",
+                    error
+                );
+
+            }
+
+        }
+
+
+        start.style.display =
+        "none";
+
+        crosshair.style.display =
+        "block";
+
+
+        status.textContent =
+        hitTestReady
+        ?
+        "Mueve el teléfono para detectar una superficie."
+        :
+        "AR activa. La ventana está flotando.";
+
+
+        session.addEventListener(
+            "end",
+            onAREnd
+        );
+
+
+        placed =
+        false;
+
+
+    }catch(error){
+
+        console.error(error);
+
+        status.textContent =
+        "No se pudo iniciar AR: "
+        +
+        error.message;
+
+    }
+
+}
+
+
+/*
+==========================================================
+ FIN AR
+==========================================================
+*/
+
+function onAREnd(){
+
+    xrSession =
+    null;
+
+    hitTestSource =
+    null;
+
+    hitTestReady =
+    false;
+
+    crosshair.style.display =
     "none";
 
+    start.style.display =
+    "flex";
+
+    status.textContent =
+    "AR finalizada.";
+
+}
+
+
+/*
+==========================================================
+ HIT TEST
+==========================================================
+*/
+
+function updateHitTest(
+    frame
+){
+
+    if(
+        !hitTestSource ||
+        !referenceSpace
+    ){
+
+        cursor.visible =
+        false;
+
+        return;
+
+    }
+
+
+    const results =
+    frame.getHitTestResults(
+        hitTestSource
+    );
+
+
+    if(
+        results.length === 0
+    ){
+
+        cursor.visible =
+        false;
+
+        return;
+
+    }
+
+
+    const hit =
+    results[0];
+
+
+    const pose =
+    hit.getPose(
+        referenceSpace
+    );
+
+
+    if(!pose){
+
+        cursor.visible =
+        false;
+
+        return;
+
+    }
+
+
+    /*
+    Posición de la superficie.
+    */
+
+    cursor.position.set(
+
+        pose.transform.position.x,
+
+        pose.transform.position.y,
+
+        pose.transform.position.z
+
+    );
+
+
+    /*
+    Orientación de la superficie.
+    */
+
+    cursor.quaternion.set(
+
+        pose.transform.orientation.x,
+
+        pose.transform.orientation.y,
+
+        pose.transform.orientation.z,
+
+        pose.transform.orientation.w
+
+    );
+
+
+    cursor.visible =
+    true;
+
+
+    /*
+    Cuando todavía no hemos colocado
+    la ventana, la previsualizamos
+    sobre la superficie.
+    */
+
+    if(!placed){
+
+        browserGroup.position.copy(
+            cursor.position
+        );
+
+
+        browserGroup.position.y +=
+        0.55;
+
+
+        /*
+        Orientar el panel hacia el usuario.
+        */
+
+        browserGroup.rotation.set(
+            0,
+            0,
+            0
+        );
+
+    }
+
+}
+
+
+/*
+==========================================================
+ TOCAR PARA COLOCAR
+==========================================================
+*/
+
+window.addEventListener(
+    "touchend",
+    function(){
+
+        if(
+            !xrSession ||
+            !cursor.visible
+        ){
+
+            return;
+
+        }
+
+
+        browserGroup.position.copy(
+            cursor.position
+        );
+
+
+        browserGroup.position.y +=
+        0.55;
+
+
+        placed =
+        true;
+
+
+        status.textContent =
+        "VENTANA AR COLOCADA";
+
+    }
+);
+
+
+/*
+==========================================================
+ ANIMACIÓN
+==========================================================
+*/
+
+renderer.setAnimationLoop(
+    function(
+        time,
+        frame
+    ){
+
+        /*
+        AR hit test.
+        */
+
+        if(
+            frame &&
+            xrSession
+        ){
+
+            updateHitTest(
+                frame
+            );
+
+        }
+
+
+        /*
+        Pequeña animación 3D.
+        */
+
+        if(
+            !placed
+        ){
+
+            browserCube.rotation.y =
+            Math.sin(
+                time*.00035
+            )*.025;
+
+        }
+
+
+        /*
+        Render.
+        */
+
+        renderer.render(
+            scene,
+            camera
+        );
+
+    }
+);
+
+
+/*
+==========================================================
+ REDIMENSIONAR
+==========================================================
+*/
+
+window.addEventListener(
+    "resize",
+    function(){
+
+        camera.aspect =
+        window.innerWidth /
+        window.innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            window.innerWidth,
+            window.innerHeight
+        );
+
+    }
+);
 
 </script>
 
 </body>
-
 </html>
