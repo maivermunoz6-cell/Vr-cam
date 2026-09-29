@@ -11,9 +11,13 @@ initial-scale=1.0,
 maximum-scale=1.0,
 user-scalable=no">
 
-<title>VR Hand Objects</title>
+<title>VR Quest Hand Browser</title>
 
 <style>
+
+/* =====================================================
+   BASE
+===================================================== */
 
 *{
     box-sizing:border-box;
@@ -31,9 +35,18 @@ body{
 
     background:#000;
 
-    touch-action:none;
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 
+    touch-action:none;
 }
+
+
+/* =====================================================
+   VR
+===================================================== */
 
 #vr{
 
@@ -50,6 +63,7 @@ body{
 
 }
 
+
 .eye{
 
     position:relative;
@@ -62,6 +76,7 @@ body{
     background:#000;
 
 }
+
 
 .eye video{
 
@@ -76,23 +91,14 @@ body{
 
     display:block;
 
-    background:#000;
-
 }
 
 
-/*
-=====================================================
-CANVAS
+/* =====================================================
+   MANOS
+===================================================== */
 
-IMPORTANTE:
-
-Aquí NO dibujamos los huesos.
-Solo los objetos interactivos.
-=====================================================
-*/
-
-.objectCanvas{
+.handCanvas{
 
     position:absolute;
 
@@ -103,65 +109,407 @@ Solo los objetos interactivos.
 
     pointer-events:none;
 
+    z-index:10;
+
 }
 
+
+/* =====================================================
+   SEPARADOR
+===================================================== */
 
 #centerLine{
 
     position:fixed;
 
+    top:0;
     left:50%;
 
-    top:0;
-
-    width:2px;
-
+    width:3px;
     height:100%;
 
-    transform:translateX(-50%);
+    transform:
+        translateX(-50%);
 
     background:#000;
 
-    z-index:20;
-
-    pointer-events:none;
+    z-index:100;
 
 }
 
+
+/* =====================================================
+   INTERFAZ VR
+===================================================== */
+
+#vrUI{
+
+    position:fixed;
+
+    inset:0;
+
+    z-index:30;
+
+    pointer-events:none;
+
+    perspective:1400px;
+
+}
+
+
+/* =====================================================
+   VENTANA QUEST
+===================================================== */
+
+#questWindow{
+
+    position:absolute;
+
+    left:50%;
+    top:50%;
+
+    width:min(
+        680px,
+        70vw
+    );
+
+    height:min(
+        430px,
+        55vh
+    );
+
+    transform:
+
+        translate(-50%,-50%)
+
+        rotateX(0deg)
+
+        rotateY(0deg)
+
+        translateZ(0px);
+
+    transform-style:preserve-3d;
+
+    background:
+
+        linear-gradient(
+            145deg,
+            rgba(35,38,45,.98),
+            rgba(10,11,15,.98)
+        );
+
+    border:
+
+        1px solid
+        rgba(255,255,255,.16);
+
+    border-radius:24px;
+
+    box-shadow:
+
+        0 25px 70px
+        rgba(0,0,0,.8),
+
+        0 0 35px
+        rgba(255,255,255,.05);
+
+    overflow:hidden;
+
+    pointer-events:auto;
+
+    transition:
+
+        box-shadow .15s ease;
+
+}
+
+
+/* =====================================================
+   VENTANA AGARRADA
+===================================================== */
+
+#questWindow.grabbed{
+
+    box-shadow:
+
+        0 30px 90px
+        rgba(0,0,0,.9),
+
+        0 0 35px
+        rgba(0,220,255,.18);
+
+}
+
+
+/* =====================================================
+   BARRA SUPERIOR
+===================================================== */
+
+.questTop{
+
+    height:58px;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    padding:
+
+        0 14px;
+
+    background:
+
+        rgba(28,30,36,.98);
+
+    border-bottom:
+
+        1px solid
+        rgba(255,255,255,.1);
+
+}
+
+
+/* =====================================================
+   BOTONES
+===================================================== */
+
+.questButton{
+
+    width:32px;
+    height:32px;
+
+    border-radius:50%;
+
+    border:none;
+
+    background:
+
+        rgba(255,255,255,.08);
+
+    color:#fff;
+
+    font-size:15px;
+
+}
+
+
+.questButton:active{
+
+    transform:scale(.9);
+
+}
+
+
+/* =====================================================
+   URL
+===================================================== */
+
+#urlBox{
+
+    flex:1;
+
+    height:38px;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+    padding:
+
+        0 12px;
+
+    background:
+
+        rgba(0,0,0,.38);
+
+    border:
+
+        1px solid
+        rgba(255,255,255,.08);
+
+    border-radius:12px;
+
+}
+
+
+#urlInput{
+
+    width:100%;
+
+    border:none;
+
+    outline:none;
+
+    background:transparent;
+
+    color:#eee;
+
+    font-size:14px;
+
+}
+
+
+#goButton{
+
+    width:35px;
+
+    height:30px;
+
+    border:none;
+
+    border-radius:8px;
+
+    background:#2b2d32;
+
+    color:#fff;
+
+}
+
+
+/* =====================================================
+   CONTENIDO
+===================================================== */
+
+#browserArea{
+
+    position:absolute;
+
+    left:0;
+    right:0;
+
+    top:58px;
+    bottom:0;
+
+    background:#111;
+
+}
+
+
+#browserFrame{
+
+    width:100%;
+    height:100%;
+
+    border:none;
+
+    background:#fff;
+
+}
+
+
+/* =====================================================
+   PANTALLA DE INICIO
+===================================================== */
+
+#questHome{
+
+    position:absolute;
+
+    inset:0;
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    justify-content:center;
+
+    background:
+
+        radial-gradient(
+            circle at 50% 35%,
+            #252a35,
+            #111318 45%,
+            #090a0d 100%
+        );
+
+    color:#fff;
+
+}
+
+
+#questLogo{
+
+    width:80px;
+    height:80px;
+
+    border-radius:25px;
+
+    background:
+
+        linear-gradient(
+            145deg,
+            #fff,
+            #9ba1ab
+        );
+
+    box-shadow:
+
+        0 15px 35px
+        rgba(0,0,0,.6);
+
+    margin-bottom:22px;
+
+}
+
+
+#questHome h1{
+
+    font-size:27px;
+
+    margin-bottom:10px;
+
+}
+
+
+#questHome p{
+
+    color:#aeb3bc;
+
+    font-size:14px;
+
+}
+
+
+/* =====================================================
+   INFORMACIÓN
+===================================================== */
 
 #info{
 
     position:fixed;
 
-    top:15px;
-
+    top:14px;
     left:50%;
 
-    transform:translateX(-50%);
+    transform:
+        translateX(-50%);
 
-    z-index:50;
+    z-index:150;
 
     color:#00ffff;
 
-    background:rgba(0,0,0,.55);
+    background:
+        rgba(0,0,0,.55);
 
-    border:2px solid rgba(0,255,255,.55);
+    border:
+
+        1px solid
+        rgba(0,255,255,.4);
 
     border-radius:10px;
 
-    padding:8px 15px;
+    padding:
+        7px 12px;
 
-    font-size:12px;
-
-    font-weight:bold;
+    font-size:11px;
 
     letter-spacing:2px;
-
-    text-shadow:
-
-        0 0 8px #00ffff;
-
-    white-space:nowrap;
 
     pointer-events:none;
 
@@ -172,25 +520,27 @@ Solo los objetos interactivos.
 
     position:fixed;
 
-    top:15px;
-
+    top:14px;
     right:12px;
 
-    z-index:50;
+    z-index:150;
+
+    padding:7px 9px;
+
+    background:
+        rgba(0,0,0,.55);
+
+    border:
+        1px solid
+        rgba(0,255,100,.3);
+
+    border-radius:7px;
 
     color:#00ff88;
 
-    background:rgba(0,0,0,.5);
+    font:
 
-    border:1px solid rgba(0,255,136,.4);
-
-    border-radius:6px;
-
-    padding:6px 9px;
-
-    font-size:11px;
-
-    font-family:monospace;
+        11px monospace;
 
     pointer-events:none;
 
@@ -201,32 +551,29 @@ Solo los objetos interactivos.
 
     position:fixed;
 
-    bottom:15px;
-
+    bottom:14px;
     left:50%;
 
-    transform:translateX(-50%);
+    transform:
+        translateX(-50%);
 
-    z-index:50;
+    z-index:150;
 
-    color:#00ff88;
+    color:#fff;
 
     font-size:12px;
 
-    font-weight:bold;
-
-    letter-spacing:2px;
-
     text-shadow:
-
-        0 0 8px #00ff88;
-
-    white-space:nowrap;
+        0 0 8px #000;
 
     pointer-events:none;
 
 }
 
+
+/* =====================================================
+   PANTALLA INICIAL
+===================================================== */
 
 #startScreen{
 
@@ -234,7 +581,7 @@ Solo los objetos interactivos.
 
     inset:0;
 
-    z-index:100;
+    z-index:500;
 
     display:flex;
 
@@ -246,48 +593,28 @@ Solo los objetos interactivos.
 
     text-align:center;
 
-    color:white;
-
     background:
 
         radial-gradient(
-
             circle,
-
-            #082020 0%,
-
-            #020707 45%,
-
-            #000 100%
-
+            #1a202b,
+            #050608 70%
         );
+
+    color:white;
 
 }
 
 
 #startScreen h1{
 
-    font-size:clamp(
-
-        28px,
-
-        8vw,
-
-        60px
-
-    );
+    font-size:40px;
 
     letter-spacing:5px;
 
-    margin-bottom:20px;
+    color:white;
 
-    color:#00ffff;
-
-    text-shadow:
-
-        0 0 10px #00ffff,
-
-        0 0 25px #00ffff;
+    margin-bottom:15px;
 
 }
 
@@ -296,45 +623,35 @@ Solo los objetos interactivos.
 
     width:85%;
 
-    max-width:650px;
-
-    color:#baffff;
+    max-width:550px;
 
     line-height:1.6;
 
-    margin-bottom:30px;
+    color:#aaa;
+
+    margin-bottom:25px;
 
 }
 
 
 #startButton{
 
-    padding:18px 35px;
+    padding:
 
-    color:#00ffff;
+        16px 30px;
 
-    background:#001818;
+    border:
 
-    border:2px solid #00ffff;
+        1px solid
+        rgba(255,255,255,.5);
 
-    border-radius:12px;
+    border-radius:14px;
 
-    font-size:18px;
+    background:#20242c;
 
-    font-weight:bold;
+    color:white;
 
-    box-shadow:
-
-        0 0 12px #00ffff,
-
-        inset 0 0 15px #003333;
-
-}
-
-
-#startButton:active{
-
-    transform:scale(.94);
+    font-size:16px;
 
 }
 
@@ -347,7 +664,7 @@ Solo los objetos interactivos.
 
 
 <!-- ==================================================
-     VR
+     CÁMARAS
 ================================================== -->
 
 <div id="vr">
@@ -356,14 +673,16 @@ Solo los objetos interactivos.
     <div class="eye">
 
         <video
-        id="leftVideo"
-        autoplay
-        muted
-        playsinline></video>
+            id="leftVideo"
+            autoplay
+            muted
+            playsinline>
+        </video>
 
         <canvas
-        id="leftObjects"
-        class="objectCanvas"></canvas>
+            id="leftHands"
+            class="handCanvas">
+        </canvas>
 
     </div>
 
@@ -371,14 +690,16 @@ Solo los objetos interactivos.
     <div class="eye">
 
         <video
-        id="rightVideo"
-        autoplay
-        muted
-        playsinline></video>
+            id="rightVideo"
+            autoplay
+            muted
+            playsinline>
+        </video>
 
         <canvas
-        id="rightObjects"
-        class="objectCanvas"></canvas>
+            id="rightHands"
+            class="handCanvas">
+        </canvas>
 
     </div>
 
@@ -389,36 +710,154 @@ Solo los objetos interactivos.
 <div id="centerLine"></div>
 
 
+<!-- ==================================================
+     UI QUEST
+================================================== -->
+
+<div id="vrUI">
+
+
+    <div id="questWindow">
+
+
+        <!-- BARRA -->
+
+        <div
+            class="questTop"
+            id="windowBar">
+
+
+            <button
+                class="questButton"
+                id="backButton">
+
+                ‹
+
+            </button>
+
+
+            <button
+                class="questButton"
+                id="forwardButton">
+
+                ›
+
+            </button>
+
+
+            <button
+                class="questButton"
+                id="reloadButton">
+
+                ↻
+
+            </button>
+
+
+            <div id="urlBox">
+
+                <span>🌐</span>
+
+                <input
+                    id="urlInput"
+                    value="https://example.com"
+                    autocomplete="off">
+
+                <button id="goButton">
+
+                    ↵
+
+                </button>
+
+            </div>
+
+
+        </div>
+
+
+        <!-- NAVEGADOR -->
+
+        <div id="browserArea">
+
+
+            <div id="questHome">
+
+                <div id="questLogo"></div>
+
+                <h1>
+                    Meta Browser
+                </h1>
+
+                <p>
+                    Haz pinch sobre la ventana
+                    para moverla.
+                </p>
+
+            </div>
+
+
+            <iframe
+                id="browserFrame"
+                src="about:blank">
+            </iframe>
+
+
+        </div>
+
+
+    </div>
+
+
+</div>
+
+
+<!-- ==================================================
+     INFORMACIÓN
+================================================== -->
+
 <div id="info">
-VR HAND OBJECTS
+
+    QUEST HAND BROWSER
+
 </div>
 
 
 <div id="fps">
-VIDEO: -- | TRACK: --
+
+    VIDEO: -- | HAND: --
+
 </div>
 
 
 <div id="status">
-CÁMARA DESACTIVADA
+
+    HAZ PINCH PARA AGARRAR
+
 </div>
 
 
+<!-- ==================================================
+     INICIO
+================================================== -->
+
 <div id="startScreen">
 
-    <h1>VR VISION</h1>
+    <h1>
+        META VR
+    </h1>
 
     <p>
 
-        Haz 👌 para crear un punto.
-        Haz 🤏 para agarrarlo.
-        Mueve la mano para crear una trayectoria.
+        Cámara trasera + seguimiento de manos.
+        Haz pinch sobre la ventana para agarrarla
+        y moverla.
 
     </p>
 
+
     <button id="startButton">
 
-        ACTIVAR CÁMARA
+        ACTIVAR VR
 
     </button>
 
@@ -448,46 +887,71 @@ const rightVideo =
         "rightVideo"
     );
 
-
 const leftCanvas =
     document.getElementById(
-        "leftObjects"
+        "leftHands"
     );
 
 const rightCanvas =
     document.getElementById(
-        "rightObjects"
+        "rightHands"
     );
-
 
 const leftCtx =
-    leftCanvas.getContext(
-        "2d"
-    );
+    leftCanvas.getContext("2d");
 
 const rightCtx =
-    rightCanvas.getContext(
-        "2d"
-    );
+    rightCanvas.getContext("2d");
 
-
-const startScreen =
+const questWindow =
     document.getElementById(
-        "startScreen"
+        "questWindow"
     );
 
+const windowBar =
+    document.getElementById(
+        "windowBar"
+    );
+
+const browserFrame =
+    document.getElementById(
+        "browserFrame"
+    );
+
+const questHome =
+    document.getElementById(
+        "questHome"
+    );
+
+const urlInput =
+    document.getElementById(
+        "urlInput"
+    );
+
+const goButton =
+    document.getElementById(
+        "goButton"
+    );
+
+const reloadButton =
+    document.getElementById(
+        "reloadButton"
+    );
 
 const startButton =
     document.getElementById(
         "startButton"
     );
 
+const startScreen =
+    document.getElementById(
+        "startScreen"
+    );
 
 const statusText =
     document.getElementById(
         "status"
     );
-
 
 const fpsText =
     document.getElementById(
@@ -501,43 +965,32 @@ const fpsText =
 
 
 /*
-=====================================================
-IMPORTANTE PARA EL RENDIMIENTO
-
-La pantalla intenta renderizar a 60 FPS.
-
-La detección de manos no necesita ejecutarse
-60 veces por segundo.
-
-La hacemos aproximadamente 25 veces/segundo.
-
-Los objetos se interpolan entre detecciones.
-=====================================================
+   El modelo usa precisión alta.
 */
 
-const HAND_INTERVAL = 40;
+const HAND_INTERVAL = 45;
 
 
 /*
-Suavizado del movimiento.
-
-Más alto = responde más rápido.
-
-Más bajo = más suave.
+   Suavizado de la mano.
 */
 
-const SMOOTHING = 0.55;
+const SMOOTHING = .42;
 
 
 /*
-Distancias para reconocer gestos.
-
-Son valores normalizados de MediaPipe.
+   Distancia para considerar pinch.
 */
 
-const OK_DISTANCE = 0.075;
+const PINCH_DISTANCE = .065;
 
-const PINCH_DISTANCE = 0.065;
+
+/*
+   Escala del movimiento de la mano
+   respecto al movimiento de la ventana.
+*/
+
+const MOVE_SCALE = 2.2;
 
 
 /* =====================================================
@@ -552,162 +1005,88 @@ let detectorBusy = false;
 
 let lastDetection = 0;
 
-
-/*
-Landmarks reales de MediaPipe.
-
-NO SE DIBUJAN.
-*/
-
 let detectedHands = [];
 
+let smoothHand = null;
+
 
 /*
-Landmarks suavizados.
-
-Tampoco se dibujan.
-
-Solo se utilizan para calcular
-el movimiento y los gestos.
+   Estado de pinch.
 */
 
-let smoothHands = [];
+let pinching = false;
+
+let dragging = false;
 
 
 /*
-Objeto virtual.
-
-Aquí guardamos los puntos creados.
+   Posición anterior del pinch.
 */
 
-let points = [];
+let previousPinch = null;
 
 
 /*
-¿Estamos agarrando un punto?
+   Posición 3D de la ventana.
 */
 
-let grabbedPoint = null;
+let windowX = 0;
+
+let windowY = 0;
+
+let windowZ = 0;
 
 
 /*
-Posición actual de la mano.
-
-No necesariamente se dibuja.
+   Rotación.
 */
 
-let handTarget = null;
+let windowRX = 0;
 
-let handPosition = null;
-
-
-/*
-Última posición utilizada para crear
-un nuevo punto.
-*/
-
-let lastTrailPosition = null;
+let windowRY = 0;
 
 
 /*
-Evita crear muchos puntos por segundo.
-*/
-
-let lastPointTime = 0;
-
-
-/*
-FPS
+   FPS.
 */
 
 let renderFrames = 0;
 
-let trackingFrames = 0;
+let handFrames = 0;
 
-let lastFPSUpdate =
+let lastFPS =
     performance.now();
-
-
-/* =====================================================
-   CONEXIONES
-
-   Se mantienen para que MediaPipe tenga
-   toda la estructura de la mano disponible,
-   pero NO LAS DIBUJAMOS.
-===================================================== */
-
-const connections = [
-
-    [0,1],
-    [1,2],
-    [2,3],
-    [3,4],
-
-    [0,5],
-    [5,6],
-    [6,7],
-    [7,8],
-
-    [5,9],
-    [9,10],
-    [10,11],
-    [11,12],
-
-    [9,13],
-    [13,14],
-    [14,15],
-    [15,16],
-
-    [13,17],
-    [17,18],
-    [18,19],
-    [19,20],
-
-    [0,17]
-
-];
 
 
 /* =====================================================
    MEDIAPIPE
 ===================================================== */
 
-const hands = new Hands({
+const hands =
+    new Hands({
 
-    locateFile:function(file){
+        locateFile:function(file){
 
-        return "https://cdn.jsdelivr.net/npm/@mediapipe/hands/" + file;
+            return "https://cdn.jsdelivr.net/npm/@mediapipe/hands/" + file;
 
-    }
+        }
 
-});
+    });
 
 
 hands.setOptions({
 
     /*
-    Solo necesitamos una mano para
-    controlar los objetos.
-
-    Esto reduce bastante el consumo.
+       Más precisión.
     */
 
     maxNumHands:1,
 
+    modelComplexity:1,
 
-    /*
-    0 = más rápido.
+    minDetectionConfidence:.80,
 
-    Como los huesos ya NO SE DIBUJAN,
-    podemos utilizar el detector rápido.
-    */
-
-    modelComplexity:0,
-
-
-    minDetectionConfidence:0.65,
-
-    minTrackingConfidence:0.65
+    minTrackingConfidence:.80
 
 });
 
@@ -716,34 +1095,37 @@ hands.setOptions({
    RESULTADOS
 ===================================================== */
 
-hands.onResults(function(results){
+hands.onResults(
+    function(results){
 
-    trackingFrames++;
+        handFrames++;
 
 
-    if(
-        results &&
-        results.multiHandLandmarks &&
-        results.multiHandLandmarks.length > 0
-    ){
+        if(
+            results &&
+            results.multiHandLandmarks &&
+            results.multiHandLandmarks.length
+        ){
 
-        detectedHands =
-            results.multiHandLandmarks;
+            detectedHands =
+                results.multiHandLandmarks[0];
 
-    }else{
+        }else{
 
-        detectedHands = [];
+            detectedHands =
+                null;
+
+        }
 
     }
-
-});
+);
 
 
 /* =====================================================
    CANVAS
 ===================================================== */
 
-function resizeCanvases(){
+function resizeCanvas(){
 
     const dpr =
         Math.min(
@@ -754,7 +1136,8 @@ function resizeCanvases(){
 
     const width =
         Math.floor(
-            window.innerWidth / 2 *
+            window.innerWidth /
+            2 *
             dpr
         );
 
@@ -784,11 +1167,11 @@ function resizeCanvases(){
 
 window.addEventListener(
     "resize",
-    resizeCanvases
+    resizeCanvas
 );
 
 
-resizeCanvases();
+resizeCanvas();
 
 
 /* =====================================================
@@ -804,7 +1187,8 @@ async function startCamera(){
 
 
         stream =
-            await navigator.mediaDevices
+            await navigator
+            .mediaDevices
             .getUserMedia({
 
                 video:{
@@ -822,13 +1206,9 @@ async function startCamera(){
                     },
 
                     frameRate:{
-
                         ideal:60,
-
                         min:30,
-
                         max:60
-
                     }
 
                 },
@@ -851,37 +1231,27 @@ async function startCamera(){
 
 
         /*
-        Intentar 60 FPS reales.
+           Intentar utilizar 60 FPS.
         */
 
         const track =
             stream.getVideoTracks()[0];
 
 
-        if(track){
+        try{
 
-            try{
+            await track.applyConstraints({
 
-                await track.applyConstraints({
+                frameRate:{
+                    ideal:60,
+                    max:60
+                }
 
-                    frameRate:{
+            });
 
-                        ideal:60,
+        }catch(e){
 
-                        max:60
-
-                    }
-
-                });
-
-            }catch(e){
-
-                console.log(
-                    "FPS automático:",
-                    e
-                );
-
-            }
+            console.log(e);
 
         }
 
@@ -894,25 +1264,18 @@ async function startCamera(){
 
 
         statusText.textContent =
-            "HAZ 👌 PARA CREAR UN PUNTO";
+            "HAZ PINCH SOBRE LA VENTANA";
 
 
         /*
-        Pantalla completa.
+           Pantalla completa.
         */
 
         try{
 
-            if(
-                document.documentElement
-                .requestFullscreen
-            ){
-
-                await document
+            await document
                 .documentElement
                 .requestFullscreen();
-
-            }
 
         }catch(e){}
 
@@ -927,12 +1290,8 @@ async function startCamera(){
         console.error(error);
 
 
-        statusText.textContent =
-            "ERROR DE CÁMARA";
-
-
         alert(
-            "No se pudo iniciar la cámara.\n\n"
+            "No se pudo activar la cámara:\n\n"
             +
             error.message
         );
@@ -943,7 +1302,7 @@ async function startCamera(){
 
 
 /* =====================================================
-   DETECTAR MANOS
+   DETECCIÓN
 ===================================================== */
 
 async function detectHands(time){
@@ -963,7 +1322,8 @@ async function detectHands(time){
 
 
     if(
-        time - lastDetection <
+        time -
+        lastDetection <
         HAND_INTERVAL
     ){
 
@@ -998,10 +1358,7 @@ async function detectHands(time){
 
     }catch(error){
 
-        console.log(
-            "MediaPipe:",
-            error
-        );
+        console.log(error);
 
     }
 
@@ -1012,48 +1369,33 @@ async function detectHands(time){
 
 
 /* =====================================================
-   SUAVIZAR LANDMARKS
+   SUAVIZAR
 ===================================================== */
 
-function updateSmoothHands(){
+function smoothLandmarks(){
 
-    if(
-        detectedHands.length === 0
-    ){
+    if(!detectedHands){
 
-        smoothHands = [];
+        smoothHand =
+            null;
 
         return;
 
     }
 
 
-    /*
-    Primera detección.
-    */
+    if(!smoothHand){
 
-    if(
-        smoothHands.length === 0
-    ){
-
-        smoothHands =
+        smoothHand =
             detectedHands.map(
 
-                hand =>
+                p => ({
 
-                hand.map(
+                    x:p.x,
+                    y:p.y,
+                    z:p.z
 
-                    p => ({
-
-                        x:p.x,
-
-                        y:p.y,
-
-                        z:p.z
-
-                    })
-
-                )
+                })
 
             );
 
@@ -1062,49 +1404,41 @@ function updateSmoothHands(){
     }
 
 
-    const target =
-        detectedHands[0];
-
-
-    const current =
-        smoothHands[0];
-
-
-    if(!current){
-
-        return;
-
-    }
-
-
     for(
         let i=0;
-        i<target.length;
+        i<detectedHands.length;
         i++
     ){
 
-        current[i].x +=
+        const target =
+            detectedHands[i];
+
+        const current =
+            smoothHand[i];
+
+
+        current.x +=
             (
-                target[i].x -
-                current[i].x
+                target.x -
+                current.x
             )
             *
             SMOOTHING;
 
 
-        current[i].y +=
+        current.y +=
             (
-                target[i].y -
-                current[i].y
+                target.y -
+                current.y
             )
             *
             SMOOTHING;
 
 
-        current[i].z +=
+        current.z +=
             (
-                target[i].z -
-                current[i].z
+                target.z -
+                current.z
             )
             *
             SMOOTHING;
@@ -1115,25 +1449,25 @@ function updateSmoothHands(){
 
 
 /* =====================================================
-   DISTANCIA ENTRE DOS PUNTOS
+   DISTANCIA
 ===================================================== */
 
 function distance(a,b){
 
     const dx =
-        a.x - b.x;
+        a.x-b.x;
 
     const dy =
-        a.y - b.y;
+        a.y-b.y;
 
     const dz =
-        (a.z - b.z) * 0.5;
+        (a.z-b.z)*.5;
 
 
     return Math.sqrt(
 
-        dx*dx +
-        dy*dy +
+        dx*dx+
+        dy*dy+
         dz*dz
 
     );
@@ -1142,97 +1476,10 @@ function distance(a,b){
 
 
 /* =====================================================
-   DETECTAR GESTO 👌
+   PINCH
 ===================================================== */
 
-function isOKGesture(hand){
-
-    /*
-    Pulgar = 4
-
-    Índice = 8
-
-    Medio = 12
-
-    Anular = 16
-
-    Meñique = 20
-    */
-
-
-    const thumb =
-        hand[4];
-
-    const index =
-        hand[8];
-
-    const middle =
-        hand[12];
-
-    const ring =
-        hand[16];
-
-    const pinky =
-        hand[20];
-
-
-    /*
-    Pulgar e índice juntos.
-    */
-
-    const pinch =
-        distance(
-            thumb,
-            index
-        );
-
-
-    /*
-    Los otros dedos deben estar
-    relativamente alejados.
-    */
-
-    const middleOpen =
-        distance(
-            hand[9],
-            middle
-        ) > 0.12;
-
-
-    const ringOpen =
-        distance(
-            hand[13],
-            ring
-        ) > 0.10;
-
-
-    const pinkyOpen =
-        distance(
-            hand[17],
-            pinky
-        ) > 0.08;
-
-
-    return (
-
-        pinch < OK_DISTANCE &&
-
-        middleOpen &&
-
-        ringOpen &&
-
-        pinkyOpen
-
-    );
-
-}
-
-
-/* =====================================================
-   DETECTAR PINZA 🤏
-===================================================== */
-
-function isPinch(hand){
+function isPinching(hand){
 
     if(!hand){
 
@@ -1241,18 +1488,11 @@ function isPinch(hand){
     }
 
 
-    const thumb =
-        hand[4];
-
-    const index =
-        hand[8];
-
-
     return (
 
         distance(
-            thumb,
-            index
+            hand[4],
+            hand[8]
         )
         <
         PINCH_DISTANCE
@@ -1263,35 +1503,24 @@ function isPinch(hand){
 
 
 /* =====================================================
-   POSICIÓN DE CONTROL
+   POSICIÓN DEL PINCH
 ===================================================== */
 
-function getControlPosition(hand){
-
-    /*
-    Utilizamos el punto medio entre
-    pulgar e índice.
-
-    Esto es más estable para agarrar
-    objetos.
-    */
-
-    const thumb =
-        hand[4];
-
-    const index =
-        hand[8];
-
+function getPinchPosition(hand){
 
     return {
 
         x:
-            (thumb.x + index.x)
-            / 2,
+            (
+                hand[4].x+
+                hand[8].x
+            )/2,
 
         y:
-            (thumb.y + index.y)
-            / 2
+            (
+                hand[4].y+
+                hand[8].y
+            )/2
 
     };
 
@@ -1299,163 +1528,172 @@ function getControlPosition(hand){
 
 
 /* =====================================================
-   CREAR PUNTO
+   APLICAR TRANSFORMACIÓN
 ===================================================== */
 
-function createPoint(position){
+function updateWindowTransform(){
 
-    points.push({
+    questWindow.style.transform =
 
-        x:position.x,
+        "translate(" +
 
-        y:position.y,
+        "calc(-50% + " +
+        windowX +
+        "px)," +
 
-        grabbed:false,
+        "calc(-50% + " +
+        windowY +
+        "px)" +
 
-        radius:9,
+        ") " +
 
-        created:
-            performance.now()
+        "rotateX(" +
+        windowRX +
+        "deg) " +
 
-    });
+        "rotateY(" +
+        windowRY +
+        "deg) " +
+
+        "translateZ(" +
+        windowZ +
+        "px)";
 
 }
 
 
 /* =====================================================
-   BUSCAR PUNTO CERCANO
+   DETECTAR POSICIÓN DE LA VENTANA
 ===================================================== */
 
-function findClosestPoint(position){
+function getWindowRect(){
 
-    let closest =
-        null;
-
-    let closestDistance =
-        999;
-
-
-    for(
-        const point
-        of points
-    ){
-
-        const dx =
-            point.x -
-            position.x;
-
-        const dy =
-            point.y -
-            position.y;
-
-
-        const d =
-            Math.sqrt(
-                dx*dx +
-                dy*dy
-            );
-
-
-        /*
-        Radio de agarre.
-
-        0.07 aproximadamente 7%
-        del ancho de pantalla.
-        */
-
-        if(
-            d < 0.07 &&
-            d < closestDistance
-        ){
-
-            closest =
-                point;
-
-            closestDistance =
-                d;
-
-        }
-
-    }
-
-
-    return closest;
+    return questWindow.getBoundingClientRect();
 
 }
 
 
 /* =====================================================
-   ACTUALIZAR OBJETOS
+   PINCH SOBRE VENTANA
+===================================================== */
+
+function pinchIsInsideWindow(pos){
+
+    const rect =
+        getWindowRect();
+
+
+    /*
+       Convertir coordenadas normalizadas
+       de MediaPipe a pantalla.
+
+       La cámara trasera puede estar
+       espejada dependiendo del dispositivo.
+    */
+
+    const screenX =
+        (1-pos.x) *
+        window.innerWidth;
+
+
+    const screenY =
+        pos.y *
+        window.innerHeight;
+
+
+    return (
+
+        screenX >= rect.left &&
+
+        screenX <= rect.right &&
+
+        screenY >= rect.top &&
+
+        screenY <= rect.bottom
+
+    );
+
+}
+
+
+/* =====================================================
+   INTERACCIÓN
 ===================================================== */
 
 function updateInteraction(){
 
-    if(
-        smoothHands.length === 0
-    ){
+    if(!smoothHand){
+
+        if(dragging){
+
+            dragging = false;
+
+            questWindow.classList
+                .remove("grabbed");
+
+        }
+
+        previousPinch = null;
 
         return;
 
     }
 
 
-    const hand =
-        smoothHands[0];
-
-
-    const position =
-        getControlPosition(
-            hand
-        );
-
-
-    handPosition =
-        position;
-
-
-    const ok =
-        isOKGesture(
-            hand
-        );
-
-
     const pinch =
-        isPinch(
-            hand
+        isPinching(
+            smoothHand
+        );
+
+
+    const pos =
+        getPinchPosition(
+            smoothHand
         );
 
 
     /*
     =================================================
-    👌 CREAR PUNTO
+    INICIO DEL PINCH
     =================================================
     */
 
     if(
-        ok &&
-        !grabbedPoint
+        pinch &&
+        !pinching
     ){
 
+        pinching = true;
+
+
         /*
-        No crear 100 puntos seguidos.
+           ¿El dedo está sobre la ventana?
         */
 
-        const now =
-            performance.now();
-
-
         if(
-            now - lastPointTime >
-            500
+            pinchIsInsideWindow(
+                pos
+            )
         ){
 
-            createPoint(
-                position
-            );
+            dragging = true;
 
 
-            lastPointTime =
-                now;
+            questWindow.classList
+                .add("grabbed");
+
+
+            previousPinch = {
+
+                x:pos.x,
+
+                y:pos.y
+
+            };
+
+
+            statusText.textContent =
+                "VENTANA AGARRADA";
 
         }
 
@@ -1464,44 +1702,90 @@ function updateInteraction(){
 
     /*
     =================================================
-    🤏 AGARRAR
+    MOVER VENTANA
     =================================================
     */
 
     if(
         pinch &&
-        !grabbedPoint
+        dragging &&
+        previousPinch
     ){
 
-        const closest =
-            findClosestPoint(
-                position
+        const dx =
+            pos.x -
+            previousPinch.x;
+
+
+        const dy =
+            pos.y -
+            previousPinch.y;
+
+
+        /*
+           Movimiento horizontal.
+        */
+
+        windowX +=
+            dx *
+            window.innerWidth *
+            MOVE_SCALE;
+
+
+        /*
+           Movimiento vertical.
+        */
+
+        windowY +=
+            dy *
+            window.innerHeight *
+            MOVE_SCALE;
+
+
+        /*
+           Limitar para no perder la ventana.
+        */
+
+        const maxX =
+            window.innerWidth *
+            .40;
+
+
+        const maxY =
+            window.innerHeight *
+            .40;
+
+
+        windowX =
+            Math.max(
+                -maxX,
+                Math.min(
+                    maxX,
+                    windowX
+                )
             );
 
 
-        if(closest){
-
-            grabbedPoint =
-                closest;
-
-            grabbedPoint.grabbed =
-                true;
-
-            grabbedPoint.radius =
-                14;
+        windowY =
+            Math.max(
+                -maxY,
+                Math.min(
+                    maxY,
+                    windowY
+                )
+            );
 
 
-            lastTrailPosition = {
+        updateWindowTransform();
 
-                x:
-                    position.x,
 
-                y:
-                    position.y
+        previousPinch = {
 
-            };
+            x:pos.x,
 
-        }
+            y:pos.y
+
+        };
 
     }
 
@@ -1514,110 +1798,26 @@ function updateInteraction(){
 
     if(
         !pinch &&
-        grabbedPoint
+        pinching
     ){
 
-        grabbedPoint.grabbed =
-            false;
-
-        grabbedPoint.radius =
-            9;
-
-        grabbedPoint =
-            null;
-
-        lastTrailPosition =
-            null;
-
-    }
+        pinching = false;
 
 
-    /*
-    =================================================
-    MOVER PUNTO
-    =================================================
-    */
+        if(dragging){
 
-    if(
-        grabbedPoint &&
-        pinch
-    ){
+            dragging = false;
 
-        grabbedPoint.x =
-            position.x;
+            questWindow.classList
+                .remove("grabbed");
 
-        grabbedPoint.y =
-            position.y;
-
-
-        /*
-        ---------------------------------------------
-        CREAR COPIA / TRAZA
-        ---------------------------------------------
-        */
-
-        if(
-            lastTrailPosition
-        ){
-
-            const dx =
-                position.x -
-                lastTrailPosition.x;
-
-            const dy =
-                position.y -
-                lastTrailPosition.y;
-
-
-            const movement =
-                Math.sqrt(
-                    dx*dx +
-                    dy*dy
-                );
-
-
-            /*
-            Solo crear otro punto si realmente
-            movimos la mano una distancia mínima.
-            */
-
-            if(
-                movement > 0.025
-            ){
-
-                points.push({
-
-                    x:
-                        position.x,
-
-                    y:
-                        position.y,
-
-                    grabbed:false,
-
-                    radius:7,
-
-                    trail:true,
-
-                    created:
-                        performance.now()
-
-                });
-
-
-                lastTrailPosition = {
-
-                    x:
-                        position.x,
-
-                    y:
-                        position.y
-
-                };
-
-            }
+            statusText.textContent =
+                "HAZ PINCH SOBRE LA VENTANA";
 
         }
+
+
+        previousPinch = null;
 
     }
 
@@ -1625,231 +1825,271 @@ function updateInteraction(){
 
 
 /* =====================================================
-   DIBUJAR OBJETOS
+   DIBUJAR MANOS
 ===================================================== */
 
-function drawScene(
+const connections = [
+
+    [0,1],
+    [1,2],
+    [2,3],
+    [3,4],
+
+    [0,5],
+    [5,6],
+    [6,7],
+    [7,8],
+
+    [5,9],
+    [9,10],
+    [10,11],
+    [11,12],
+
+    [9,13],
+    [13,14],
+    [14,15],
+    [15,16],
+
+    [13,17],
+    [17,18],
+    [18,19],
+    [19,20],
+
+    [0,17]
+
+];
+
+
+function drawHand(
     ctx,
     canvas
 ){
 
+    if(!smoothHand){
+
+        ctx.clearRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        return;
+
+    }
+
+
     ctx.clearRect(
-
         0,
         0,
-
         canvas.width,
         canvas.height
-
     );
 
 
     /*
-    =================================================
-    LÍNEAS
-    =================================================
+       HUESOS
     */
 
-    if(
-        points.length > 1
+    ctx.save();
+
+
+    ctx.strokeStyle =
+        "rgba(0,255,255,.8)";
+
+    ctx.lineWidth =
+        2.5;
+
+    ctx.shadowBlur =
+        8;
+
+    ctx.shadowColor =
+        "#00ffff";
+
+
+    for(
+        const c
+        of connections
     ){
 
-        ctx.save();
+        const a =
+            smoothHand[c[0]];
 
-
-        ctx.strokeStyle =
-            "rgba(0,255,255,.75)";
-
-
-        ctx.lineWidth =
-            3;
-
-
-        ctx.shadowBlur =
-            10;
-
-        ctx.shadowColor =
-            "#00ffff";
+        const b =
+            smoothHand[c[1]];
 
 
         ctx.beginPath();
 
 
-        for(
-            let i=0;
-            i<points.length;
-            i++
-        ){
+        ctx.moveTo(
 
-            const point =
-                points[i];
+            (1-a.x) *
+            canvas.width,
 
+            a.y *
+            canvas.height
 
-            const x =
-                point.x *
-                canvas.width;
+        );
 
 
-            const y =
-                point.y *
-                canvas.height;
+        ctx.lineTo(
 
+            (1-b.x) *
+            canvas.width,
 
-            if(
-                i===0
-            ){
+            b.y *
+            canvas.height
 
-                ctx.moveTo(
-                    x,
-                    y
-                );
-
-            }else{
-
-                ctx.lineTo(
-                    x,
-                    y
-                );
-
-            }
-
-        }
+        );
 
 
         ctx.stroke();
-
-
-        ctx.restore();
 
     }
 
 
     /*
-    =================================================
-    PUNTOS
-    =================================================
+       PUNTOS
     */
 
+    ctx.fillStyle =
+        "#fff";
+
+    ctx.shadowBlur =
+        14;
+
+    ctx.shadowColor =
+        "#00ffff";
+
+
     for(
-        const point
-        of points
+        const p
+        of smoothHand
     ){
-
-        const x =
-            point.x *
-            canvas.width;
-
-
-        const y =
-            point.y *
-            canvas.height;
-
-
-        const radius =
-            point.radius;
-
-
-        ctx.save();
-
-
-        /*
-        Punto agarrado = rojo.
-
-        Punto normal = blanco.
-        */
-
-        if(
-            point.grabbed
-        ){
-
-            ctx.fillStyle =
-                "#ff2020";
-
-            ctx.shadowColor =
-                "#ff0000";
-
-            ctx.shadowBlur =
-                25;
-
-        }else{
-
-            ctx.fillStyle =
-                "#ffffff";
-
-            ctx.shadowColor =
-                "#ffffff";
-
-            ctx.shadowBlur =
-                18;
-
-        }
-
 
         ctx.beginPath();
 
 
         ctx.arc(
 
-            x,
+            (1-p.x) *
+            canvas.width,
 
-            y,
+            p.y *
+            canvas.height,
 
-            radius,
+            3.5,
 
             0,
 
-            Math.PI * 2
+            Math.PI*2
 
         );
 
 
         ctx.fill();
 
-
-        ctx.restore();
-
     }
+
+
+    ctx.restore();
 
 }
 
 
 /* =====================================================
-   FPS
+   BOTONES DEL NAVEGADOR
 ===================================================== */
 
-function updateFPS(){
+goButton.addEventListener(
+    "click",
+    loadURL
+);
 
-    const now =
-        performance.now();
+
+urlInput.addEventListener(
+    "keydown",
+    function(e){
+
+        if(
+            e.key === "Enter"
+        ){
+
+            loadURL();
+
+        }
+
+    }
+);
+
+
+function loadURL(){
+
+    let url =
+        urlInput.value.trim();
+
+
+    if(!url){
+
+        return;
+
+    }
 
 
     if(
-        now - lastFPSUpdate >= 1000
+        !/^https?:\/\//i.test(url)
     ){
 
-        fpsText.textContent =
-            "VIDEO: " +
-            Math.round(
-                renderFrames
-            ) +
-            " | TRACK: " +
-            trackingFrames;
-
-
-        renderFrames = 0;
-
-        trackingFrames = 0;
-
-        lastFPSUpdate =
-            now;
+        url =
+            "https://" +
+            url;
 
     }
+
+
+    /*
+       Mostrar iframe.
+    */
+
+    questHome.style.display =
+        "none";
+
+
+    browserFrame.style.display =
+        "block";
+
+
+    browserFrame.src =
+        url;
 
 }
 
 
+reloadButton.addEventListener(
+    "click",
+    function(){
+
+        try{
+
+            browserFrame
+                .contentWindow
+                .location
+                .reload();
+
+        }catch(e){
+
+            browserFrame.src =
+                browserFrame.src;
+
+        }
+
+    }
+);
+
+
 /* =====================================================
-   RENDER PRINCIPAL
+   RENDER
 ===================================================== */
 
 function render(time){
@@ -1862,71 +2102,72 @@ function render(time){
 
 
     /*
-    ---------------------------------------------
-    MediaPipe
-    ---------------------------------------------
+       Detección.
     */
 
-    detectHands(
-        time
-    );
+    detectHands(time);
 
 
     /*
-    ---------------------------------------------
-    Suavizado invisible
-    ---------------------------------------------
+       Suavizado.
     */
 
-    updateSmoothHands();
+    smoothLandmarks();
 
 
     /*
-    ---------------------------------------------
-    LÓGICA DE GESTOS
-    ---------------------------------------------
+       Interacción.
     */
 
     updateInteraction();
 
 
     /*
-    ---------------------------------------------
-    SOLO DIBUJAMOS OBJETOS
-
-    LOS HUESOS NO SE DIBUJAN.
-    ---------------------------------------------
+       Dibujar manos.
     */
 
-    drawScene(
+    drawHand(
         leftCtx,
         leftCanvas
     );
 
 
-    drawScene(
+    drawHand(
         rightCtx,
         rightCanvas
     );
 
 
     /*
-    ---------------------------------------------
-    FPS
-    ---------------------------------------------
+       FPS.
     */
 
     renderFrames++;
 
 
-    updateFPS();
+    const now =
+        performance.now();
 
 
-    /*
-    ---------------------------------------------
-    SIGUIENTE FRAME
-    ---------------------------------------------
-    */
+    if(
+        now-lastFPS >= 1000
+    ){
+
+        fpsText.textContent =
+            "VIDEO: " +
+            renderFrames +
+            " | HAND: " +
+            handFrames;
+
+
+        renderFrames = 0;
+
+        handFrames = 0;
+
+        lastFPS = now;
+
+    }
+
 
     requestAnimationFrame(
         render
@@ -1936,16 +2177,22 @@ function render(time){
 
 
 /* =====================================================
-   BOTÓN
+   INICIAR
 ===================================================== */
 
 startButton.addEventListener(
-
     "click",
-
     startCamera
-
 );
+
+
+/*
+   Estado inicial.
+*/
+
+browserFrame.style.display =
+    "none";
+
 
 </script>
 
