@@ -2,1441 +2,258 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width,initial-scale=1.0,user-scalable=no">
-
-<title>AR 3D Browser</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VR Hand Vision 60 FPS Optimized</title>
 <style>
-*{
-    box-sizing:border-box;
-}
-
-html,body{
-    margin:0;
-    width:100%;
-    height:100%;
-    overflow:hidden;
-    background:#000;
-    font-family:Arial,sans-serif;
-}
-
-body{
-    touch-action:none;
-}
-
-#app{
-    position:fixed;
-    inset:0;
-    overflow:hidden;
-}
-
-canvas{
-    display:block;
-    width:100%;
-    height:100%;
-}
-
-#ui{
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-    z-index:20;
-}
-
-#top{
-    position:absolute;
-    top:18px;
-    left:50%;
-    transform:translateX(-50%);
-
-    padding:12px 20px;
-
-    border:1px solid rgba(0,255,255,.55);
-    border-radius:16px;
-
-    background:rgba(0,0,0,.55);
-    backdrop-filter:blur(12px);
-
-    color:#00ffff;
-
-    font-size:14px;
-    letter-spacing:3px;
-
-    white-space:nowrap;
-}
-
-#status{
-    position:absolute;
-    bottom:25px;
-    left:50%;
-    transform:translateX(-50%);
-
-    padding:12px 18px;
-
-    background:rgba(0,0,0,.65);
-
-    border:1px solid rgba(255,255,255,.15);
-
-    border-radius:14px;
-
-    color:white;
-
-    font-size:13px;
-
-    text-align:center;
-
-    max-width:90%;
-}
-
-#start{
-    position:fixed;
-    inset:0;
-
-    z-index:100;
-
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-
-    background:
-        radial-gradient(
-            circle at center,
-            #18242b,
-            #030506 70%
-        );
-
-    color:white;
-
-    text-align:center;
-
-    padding:30px;
-}
-
-#start h1{
-    font-size:38px;
-    letter-spacing:5px;
-    margin:0 0 12px;
-}
-
-#start p{
-    max-width:560px;
-    color:#aaa;
-    line-height:1.6;
-    margin-bottom:25px;
-}
-
-button{
-    min-width:180px;
-    min-height:52px;
-
-    border:1px solid rgba(0,255,255,.6);
-
-    border-radius:15px;
-
-    background:#111a1e;
-
-    color:#fff;
-
-    font-size:16px;
-
-    padding:12px 22px;
-}
-
-button:active{
-    transform:scale(.96);
-}
-
-#arButton{
-    display:none;
-}
-
-#fallback{
-    position:fixed;
-    left:50%;
-    bottom:90px;
-    transform:translateX(-50%);
-
-    z-index:80;
-
-    padding:10px 15px;
-
-    background:rgba(0,0,0,.65);
-
-    color:#bbb;
-
-    border-radius:10px;
-
-    font-size:11px;
-
-    text-align:center;
-
-    display:none;
-}
-
-#crosshair{
-    position:fixed;
-
-    left:50%;
-    top:50%;
-
-    width:18px;
-    height:18px;
-
-    transform:translate(-50%,-50%);
-
-    border:2px solid white;
-
-    border-radius:50%;
-
-    opacity:.8;
-
-    z-index:15;
-
-    pointer-events:none;
-
-    display:none;
-}
-
-#crosshair::after{
-    content:"";
-
-    position:absolute;
-
-    left:50%;
-    top:50%;
-
-    width:4px;
-    height:4px;
-
-    transform:translate(-50%,-50%);
-
-    background:white;
-
-    border-radius:50%;
-}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;}
+#vr{position:fixed;inset:0;width:100vw;height:100vh;display:flex;background:#000;}
+.eye{position:relative;width:50%;height:100%;overflow:hidden;background:#000;}
+.eye video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#000;}
+.handCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+#centerLine{position:fixed;left:50%;top:0;width:2px;height:100%;transform:translateX(-50%);background:#000;z-index:20;pointer-events:none;}
+#info{position:fixed;top:15px;left:50%;transform:translateX(-50%);z-index:50;color:#00ffff;background:rgba(0,0,0,.55);border:2px solid rgba(0,255,255,.55);border-radius:10px;padding:8px 15px;font-size:12px;font-weight:bold;letter-spacing:2px;text-shadow:0 0 8px #00ffff;white-space:nowrap;pointer-events:none;}
+#fps{position:fixed;top:15px;right:12px;z-index:50;color:#00ff88;background:rgba(0,0,0,.5);border:1px solid rgba(0,255,136,.4);border-radius:6px;padding:6px 9px;font-size:11px;font-family:monospace;pointer-events:none;}
+#status{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);z-index:50;color:#00ff88;font-size:12px;font-weight:bold;letter-spacing:2px;text-shadow:0 0 8px #00ff88;white-space:nowrap;pointer-events:none;}
+#startScreen{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:white;background:radial-gradient(circle,#082020 0%,#020707 45%,#000 100%);}
+#startScreen h1{font-size:clamp(28px,8vw,60px);letter-spacing:5px;margin-bottom:20px;color:#00ffff;text-shadow:0 0 10px #00ffff,0 0 25px #00ffff;}
+#startScreen p{width:85%;max-width:650px;color:#baffff;line-height:1.6;margin-bottom:30px;}
+#startButton{padding:18px 35px;color:#00ffff;background:#001818;border:2px solid #00ffff;border-radius:12px;font-size:18px;font-weight:bold;box-shadow:0 0 12px #00ffff,inset 0 0 15px #003333;}
+#startButton:active{transform:scale(.94);}
 </style>
 </head>
-
 <body>
 
-<div id="app"></div>
-
-<div id="ui">
-
-    <div id="top">
-        AR 3D BROWSER
+<div id="vr">
+    <div class="eye">
+        <video id="leftVideo" autoplay muted playsinline></video>
+        <canvas id="leftHands" class="handCanvas"></canvas>
     </div>
-
-    <div id="status">
-        Pulsa "ENTRAR EN AR"
+    <div class="eye">
+        <video id="rightVideo" autoplay muted playsinline></video>
+        <canvas id="rightHands" class="handCanvas"></canvas>
     </div>
-
 </div>
 
-<div id="crosshair"></div>
-
-<div id="fallback">
-    Este dispositivo no tiene WebXR AR.
+<div id="centerLine"></div>
+<div id="info">VR CAMERA • 60 FPS</div>
+<div id="fps">VIDEO: -- | HAND: --</div>
+<div id="status">CÁMARA DESACTIVADA</div>
+<div id="startScreen">
+    <h1>VR VISION</h1>
+    <p>Cámara trasera optimizada para VR Box con interpolación fluida de alta velocidad.</p>
+    <button id="startButton">ACTIVAR CÁMARA</button>
 </div>
 
-<div id="start">
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 
-    <h1>AR WORLD</h1>
+<script>
+const leftVideo = document.getElementById("leftVideo");
+const rightVideo = document.getElementById("rightVideo");
+const leftCanvas = document.getElementById("leftHands");
+const rightCanvas = document.getElementById("rightHands");
 
-    <p>
-        Una interfaz 3D flotante en realidad aumentada.
-        El navegador AR utilizará la cámara del dispositivo
-        y WebXR cuando esté disponible.
-    </p>
+// Usar desynchronized para acelerar por hardware el canvas y evitar retrasos
+const leftCtx = leftCanvas.getContext("2d", { alpha: true, desynchronized: true });
+const rightCtx = rightCanvas.getContext("2d", { alpha: true, desynchronized: true });
 
-    <button id="arButton">
-        ENTRAR EN AR
-    </button>
+const startScreen = document.getElementById("startScreen");
+const startButton = document.getElementById("startButton");
+const statusText = document.getElementById("status");
+const fpsText = document.getElementById("fps");
 
-</div>
+let stream = null;
+let running = false;
+let detectedHands = [];
+let smoothHands = [];
 
+let renderFrames = 0;
+let detectionFrames = 0;
+let lastFPSUpdate = performance.now();
+let renderFPS = 0;
+let handFPS = 0;
 
-<script type="module">
+// Configuración de conexiones de la mano
+const connections = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],
+    [13,17],[17,18],[18,19],[19,20],
+    [0,17]
+];
 
-/*
-==========================================================
- THREE.JS
-==========================================================
-*/
-
-import * as THREE from
-"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-
-import {ARButton} from
-"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/webxr/ARButton.js";
-
-
-/*
-==========================================================
- VARIABLES
-==========================================================
-*/
-
-let scene;
-
-let camera;
-
-let renderer;
-
-let xrSession = null;
-
-let referenceSpace = null;
-
-let viewerSpace = null;
-
-let hitTestSource = null;
-
-let hitTestReady = false;
-
-let placed = false;
-
-let browserCube;
-
-let browserScreen;
-
-let cursor;
-
-
-/*
-==========================================================
- ELEMENTOS HTML
-==========================================================
-*/
-
-const app =
-document.getElementById("app");
-
-const start =
-document.getElementById("start");
-
-const arButton =
-document.getElementById("arButton");
-
-const status =
-document.getElementById("status");
-
-const crosshair =
-document.getElementById("crosshair");
-
-const fallback =
-document.getElementById("fallback");
-
-
-/*
-==========================================================
- ESCENA
-==========================================================
-*/
-
-scene =
-new THREE.Scene();
-
-
-/*
-==========================================================
- CÁMARA
-==========================================================
-*/
-
-camera =
-new THREE.PerspectiveCamera(
-    70,
-    window.innerWidth /
-    window.innerHeight,
-    0.01,
-    100
-);
-
-
-/*
-==========================================================
- RENDERER
-==========================================================
-*/
-
-renderer =
-new THREE.WebGLRenderer({
-
-    antialias:true,
-
-    alpha:true,
-
-    powerPreference:"high-performance"
-
+const hands = new Hands({
+    locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
 });
 
+hands.setOptions({
+    maxNumHands: 2,
+    modelComplexity: 0, // Bajamos a 0 para duplicar la velocidad de procesamiento por frame
+    minDetectionConfidence: 0.60,
+    minTrackingConfidence: 0.60
+});
 
-renderer.setPixelRatio(
-    Math.min(
-        window.devicePixelRatio,
-        2
-    )
-);
+hands.onResults(results => {
+    detectionFrames++;
+    detectedHands = results && results.multiHandLandmarks ? results.multiHandLandmarks : [];
+});
 
-renderer.setSize(
-    window.innerWidth,
-    window.innerHeight
-);
+function resizeCanvases() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const width = Math.floor(window.innerWidth / 2 * dpr);
+    const height = Math.floor(window.innerHeight * dpr);
 
-renderer.xr.enabled = true;
+    if (leftCanvas.width !== width || leftCanvas.height !== height) {
+        leftCanvas.width = width;
+        leftCanvas.height = height;
+        rightCanvas.width = width;
+        rightCanvas.height = height;
+    }
+}
+window.addEventListener("resize", resizeCanvases);
+resizeCanvases();
 
-renderer.setClearColor(
-    0x000000,
-    0
-);
+async function startCamera() {
+    try {
+        statusText.textContent = "ACTIVANDO CÁMARA...";
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: { ideal: "environment" },
+                width: { ideal: 1280, min: 640 },
+                height: { ideal: 720, min: 480 },
+                frameRate: { ideal: 60, max: 60 }
+            },
+            audio: false
+        });
 
-renderer.outputColorSpace =
-THREE.SRGBColorSpace;
+        leftVideo.srcObject = stream;
+        rightVideo.srcObject = stream;
 
-renderer.toneMapping =
-THREE.ACESFilmicToneMapping;
+        await Promise.all([leftVideo.play(), rightVideo.play()]);
 
-renderer.toneMappingExposure =
-1;
+        running = true;
+        startScreen.style.display = "none";
+        statusText.textContent = "BUSCANDO MANOS...";
 
-app.appendChild(
-    renderer.domElement
-);
+        try {
+            if (document.documentElement.requestFullscreen) {
+                await document.documentElement.requestFullscreen();
+            }
+        } catch(e) {}
 
+        // Bucle independiente de inferencia para no bloquear los 60 FPS visuales
+        loopDetection();
+        requestAnimationFrame(render);
 
-/*
-==========================================================
- LUCES
-==========================================================
-*/
+    } catch (error) {
+        console.error(error);
+        statusText.textContent = "ERROR DE CÁMARA";
+        alert("No se pudo iniciar la cámara: " + error.message);
+    }
+}
 
-const ambient =
-new THREE.HemisphereLight(
-    0xffffff,
-    0x222222,
-    2
-);
+async function loopDetection() {
+    if (!running) return;
+    if (leftVideo.readyState >= 2) {
+        try {
+            await hands.send({ image: leftVideo });
+        } catch (e) {}
+    }
+    // Ejecutar tan rápido como el hardware permita sin bloquear el render
+    setTimeout(loopDetection, 10);
+}
 
-scene.add(
-    ambient
-);
+function updateSmoothHands() {
+    if (detectedHands.length === 0) {
+        smoothHands = [];
+        return;
+    }
 
+    if (smoothHands.length !== detectedHands.length) {
+        smoothHands = detectedHands.map(hand => hand.map(p => ({ x: p.x, y: p.y, z: p.z })));
+        return;
+    }
 
-const light =
-new THREE.DirectionalLight(
-    0xffffff,
-    2
-);
+    // Factor de interpolación optimizado (0.6 da mayor agilidad sin perder suavidad)
+    const SMOOTHING = 0.6;
+    for (let h = 0; h < detectedHands.length; h++) {
+        const target = detectedHands[h];
+        const current = smoothHands[h];
+        for (let i = 0; i < target.length; i++) {
+            current[i].x += (target[i].x - current[i].x) * SMOOTHING;
+            current[i].y += (target[i].y - current[i].y) * SMOOTHING;
+            current[i].z += (target[i].z - current[i].z) * SMOOTHING;
+        }
+    }
+}
 
-light.position.set(
-    2,
-    4,
-    2
-);
+function drawHand(ctx, landmarks, width, height) {
+    ctx.save();
+    ctx.strokeStyle = "#00ffff";
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "#00ffff";
 
-scene.add(
-    light
-);
-
-
-/*
-==========================================================
- CREAR TEXTURA DEL NAVEGADOR
-==========================================================
-*/
-
-function createBrowserTexture(){
-
-    const canvas =
-    document.createElement("canvas");
-
-    canvas.width = 1200;
-
-    canvas.height = 700;
-
-    const ctx =
-    canvas.getContext("2d");
-
-
-    /*
-    Fondo
-    */
-
-    ctx.fillStyle =
-    "#101216";
-
-    ctx.fillRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-
-    /*
-    Barra superior
-    */
-
-    ctx.fillStyle =
-    "#1d2027";
-
-    ctx.fillRect(
-        0,
-        0,
-        1200,
-        100
-    );
-
-
-    /*
-    Botones
-    */
-
-    const buttons = [
-        ["‹",70],
-        ["›",135],
-        ["↻",200]
-    ];
-
-
-    ctx.font =
-    "bold 42px Arial";
-
-    ctx.textAlign =
-    "center";
-
-    ctx.textBaseline =
-    "middle";
-
-
-    for(
-        const b of buttons
-    ){
-
-        ctx.fillStyle =
-        "#30343d";
-
+    for (const connection of connections) {
+        const a = landmarks[connection[0]];
+        const b = landmarks[connection[1]];
         ctx.beginPath();
+        ctx.moveTo(a.x * width, a.y * height);
+        ctx.lineTo(b.x * width, b.y * height);
+        ctx.stroke();
+    }
 
-        ctx.arc(
-            b[1],
-            50,
-            31,
-            0,
-            Math.PI*2
-        );
-
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowBlur = 15;
+    for (const p of landmarks) {
+        ctx.beginPath();
+        ctx.arc(p.x * width, p.y * height, 3.5, 0, Math.PI * 2);
         ctx.fill();
-
-
-        ctx.fillStyle =
-        "#ffffff";
-
-        ctx.fillText(
-            b[0],
-            b[1],
-            51
-        );
-
     }
-
-
-    /*
-    Barra URL
-    */
-
-    ctx.fillStyle =
-    "#0b0d11";
-
-    roundRect(
-        ctx,
-        260,
-        18,
-        850,
-        64,
-        20
-    );
-
-    ctx.fill();
-
-
-    ctx.fillStyle =
-    "#00eaff";
-
-    ctx.font =
-    "28px Arial";
-
-    ctx.textAlign =
-    "left";
-
-    ctx.fillText(
-        "🌐",
-        290,
-        51
-    );
-
-
-    ctx.fillStyle =
-    "#eeeeee";
-
-    ctx.font =
-    "25px Arial";
-
-    ctx.fillText(
-        "https://example.com",
-        335,
-        51
-    );
-
-
-    /*
-    Contenido
-    */
-
-    ctx.fillStyle =
-    "#16191f";
-
-    ctx.fillRect(
-        0,
-        100,
-        1200,
-        600
-    );
-
-
-    /*
-    Logo
-    */
-
-    ctx.fillStyle =
-    "#eeeeee";
-
-    roundRect(
-        ctx,
-        500,
-        185,
-        200,
-        110,
-        35
-    );
-
-    ctx.fill();
-
-
-    /*
-    Título
-    */
-
-    ctx.fillStyle =
-    "#ffffff";
-
-    ctx.font =
-    "bold 58px Arial";
-
-    ctx.textAlign =
-    "center";
-
-    ctx.fillText(
-        "AR Browser",
-        600,
-        400
-    );
-
-
-    /*
-    Texto
-    */
-
-    ctx.fillStyle =
-    "#aeb4bd";
-
-    ctx.font =
-    "28px Arial";
-
-    ctx.fillText(
-        "Ventana 3D flotante",
-        600,
-        450
-    );
-
-
-    ctx.font =
-    "22px Arial";
-
-    ctx.fillStyle =
-    "#00ffff";
-
-    ctx.fillText(
-        "PINCHA / AR / WEBXR",
-        600,
-        510
-    );
-
-
-    const texture =
-    new THREE.CanvasTexture(
-        canvas
-    );
-
-    texture.colorSpace =
-    THREE.SRGBColorSpace;
-
-    texture.anisotropy =
-    renderer.capabilities
-        .getMaxAnisotropy();
-
-    return texture;
+    ctx.restore();
 }
 
-
-/*
-==========================================================
- ROUND RECT
-==========================================================
-*/
-
-function roundRect(
-    ctx,
-    x,
-    y,
-    w,
-    h,
-    r
-){
-
-    ctx.beginPath();
-
-    ctx.roundRect(
-        x,
-        y,
-        w,
-        h,
-        r
-    );
-
+function drawScene(ctx, canvas) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const hand of smoothHands) {
+        drawHand(ctx, hand, canvas.width, canvas.height);
+    }
 }
 
-
-/*
-==========================================================
- MATERIAL DEL CUBO
-==========================================================
-*/
-
-const bodyMaterial =
-new THREE.MeshStandardMaterial({
-
-    color:0x15191f,
-
-    metalness:.35,
-
-    roughness:.35,
-
-    transparent:true,
-
-    opacity:.94
-
-});
-
-
-/*
-==========================================================
- CUBO APLANADO
-==========================================================
-*/
-
-const cubeGeometry =
-new THREE.BoxGeometry(
-
-    1.75,
-    1.05,
-    0.09
-
-);
-
-
-browserCube =
-new THREE.Mesh(
-    cubeGeometry,
-    bodyMaterial
-);
-
-
-/*
-==========================================================
- TEXTURA
-==========================================================
-*/
-
-const browserTexture =
-createBrowserTexture();
-
-
-const screenGeometry =
-new THREE.PlaneGeometry(
-    1.67,
-    .97
-);
-
-
-const screenMaterial =
-new THREE.MeshBasicMaterial({
-
-    map:browserTexture,
-
-    transparent:true
-
-});
-
-
-browserScreen =
-new THREE.Mesh(
-    screenGeometry,
-    screenMaterial
-);
-
-
-browserScreen.position.z =
-0.052;
-
-
-browserCube.add(
-    browserScreen
-);
-
-
-/*
-==========================================================
- BORDE NEÓN
-==========================================================
-*/
-
-const edgeGeometry =
-new THREE.EdgesGeometry(
-    cubeGeometry
-);
-
-
-const edgeMaterial =
-new THREE.LineBasicMaterial({
-
-    color:0x00ffff,
-
-    transparent:true,
-
-    opacity:.7
-
-});
-
-
-const edges =
-new THREE.LineSegments(
-    edgeGeometry,
-    edgeMaterial
-);
-
-
-browserCube.add(
-    edges
-);
-
-
-/*
-==========================================================
- GRUPO
-==========================================================
-*/
-
-const browserGroup =
-new THREE.Group();
-
-browserGroup.add(
-    browserCube
-);
-
-scene.add(
-    browserGroup
-);
-
-
-/*
-==========================================================
- POSICIÓN INICIAL
-==========================================================
-*/
-
-browserGroup.position.set(
-    0,
-    0,
-    -1.5
-);
-
-
-/*
-==========================================================
- CURSOR DE HIT TEST
-==========================================================
-*/
-
-const cursorGeometry =
-new THREE.RingGeometry(
-    .035,
-    .045,
-    32
-);
-
-
-const cursorMaterial =
-new THREE.MeshBasicMaterial({
-
-    color:0x00ffff,
-
-    side:THREE.DoubleSide
-
-});
-
-
-cursor =
-new THREE.Mesh(
-    cursorGeometry,
-    cursorMaterial
-);
-
-cursor.rotation.x =
--Math.PI/2;
-
-cursor.visible =
-false;
-
-scene.add(
-    cursor
-);
-
-
-/*
-==========================================================
- COMPROBAR WEBXR
-==========================================================
-*/
-
-async function checkAR(){
-
-    if(
-        !navigator.xr
-    ){
-
-        status.textContent =
-        "WebXR no está disponible.";
-
-        fallback.style.display =
-        "block";
-
-        return;
-
+function updateFPS() {
+    const now = performance.now();
+    if (now - lastFPSUpdate >= 1000) {
+        renderFPS = renderFrames;
+        handFPS = detectionFrames;
+        fpsText.textContent = `VIDEO: ${renderFPS} | HAND: ${handFPS}`;
+        renderFrames = 0;
+        detectionFrames = 0;
+        lastFPSUpdate = now;
+
+        statusText.textContent = smoothHands.length > 0 
+            ? `${smoothHands.length} MANO(S) • 60FPS` 
+            : "BUSCANDO MANOS...";
     }
-
-
-    try{
-
-        const supported =
-        await navigator.xr
-        .isSessionSupported(
-            "immersive-ar"
-        );
-
-
-        if(supported){
-
-            arButton.style.display =
-            "block";
-
-            status.textContent =
-            "WebXR AR disponible.";
-
-        }else{
-
-            status.textContent =
-            "Este dispositivo no soporta immersive-ar.";
-
-            fallback.style.display =
-            "block";
-
-        }
-
-    }catch(error){
-
-        console.error(error);
-
-        fallback.style.display =
-        "block";
-
-    }
-
 }
 
+function render() {
+    if (!running) return;
 
-checkAR();
+    updateSmoothHands();
 
+    drawScene(leftCtx, leftCanvas);
+    drawScene(rightCtx, rightCanvas);
 
-/*
-==========================================================
- BOTÓN AR
-==========================================================
-*/
+    renderFrames++;
+    updateFPS();
 
-arButton.addEventListener(
-    "click",
-    startAR
-);
-
-
-/*
-==========================================================
- INICIAR AR
-==========================================================
-*/
-
-async function startAR(){
-
-    try{
-
-        status.textContent =
-        "INICIANDO AR...";
-
-
-        const session =
-        await navigator.xr.requestSession(
-            "immersive-ar",
-            {
-
-                /*
-                El espacio local es suficiente
-                para colocar nuestro objeto.
-
-                Hit-test y hand-tracking son
-                opcionales para permitir que AR
-                siga funcionando aunque un
-                dispositivo no los tenga.
-                */
-
-                requiredFeatures:[
-                    "local"
-                ],
-
-                optionalFeatures:[
-                    "hit-test",
-                    "hand-tracking",
-                    "dom-overlay"
-                ],
-
-                domOverlay:{
-                    root:
-                    document.getElementById(
-                        "ui"
-                    )
-                }
-
-            }
-        );
-
-
-        xrSession =
-        session;
-
-
-        renderer.xr.setReferenceSpaceType(
-            "local"
-        );
-
-
-        await renderer.xr.setSession(
-            session
-        );
-
-
-        referenceSpace =
-        await session.requestReferenceSpace(
-            "local"
-        );
-
-
-        /*
-        Espacio desde el visor.
-        */
-
-        try{
-
-            viewerSpace =
-            await session.requestReferenceSpace(
-                "viewer"
-            );
-
-        }catch(e){
-
-            viewerSpace =
-            null;
-
-        }
-
-
-        /*
-        Hit test.
-        */
-
-        if(
-            session.enabledFeatures &&
-            session.enabledFeatures
-                .includes("hit-test") &&
-            viewerSpace
-        ){
-
-            try{
-
-                hitTestSource =
-                await session
-                .requestHitTestSource({
-
-                    space:
-                    viewerSpace
-
-                });
-
-
-                hitTestReady =
-                true;
-
-            }catch(error){
-
-                console.log(
-                    "Hit-test no disponible",
-                    error
-                );
-
-            }
-
-        }
-
-
-        start.style.display =
-        "none";
-
-        crosshair.style.display =
-        "block";
-
-
-        status.textContent =
-        hitTestReady
-        ?
-        "Mueve el teléfono para detectar una superficie."
-        :
-        "AR activa. La ventana está flotando.";
-
-
-        session.addEventListener(
-            "end",
-            onAREnd
-        );
-
-
-        placed =
-        false;
-
-
-    }catch(error){
-
-        console.error(error);
-
-        status.textContent =
-        "No se pudo iniciar AR: "
-        +
-        error.message;
-
-    }
-
+    requestAnimationFrame(render);
 }
 
-
-/*
-==========================================================
- FIN AR
-==========================================================
-*/
-
-function onAREnd(){
-
-    xrSession =
-    null;
-
-    hitTestSource =
-    null;
-
-    hitTestReady =
-    false;
-
-    crosshair.style.display =
-    "none";
-
-    start.style.display =
-    "flex";
-
-    status.textContent =
-    "AR finalizada.";
-
-}
-
-
-/*
-==========================================================
- HIT TEST
-==========================================================
-*/
-
-function updateHitTest(
-    frame
-){
-
-    if(
-        !hitTestSource ||
-        !referenceSpace
-    ){
-
-        cursor.visible =
-        false;
-
-        return;
-
-    }
-
-
-    const results =
-    frame.getHitTestResults(
-        hitTestSource
-    );
-
-
-    if(
-        results.length === 0
-    ){
-
-        cursor.visible =
-        false;
-
-        return;
-
-    }
-
-
-    const hit =
-    results[0];
-
-
-    const pose =
-    hit.getPose(
-        referenceSpace
-    );
-
-
-    if(!pose){
-
-        cursor.visible =
-        false;
-
-        return;
-
-    }
-
-
-    /*
-    Posición de la superficie.
-    */
-
-    cursor.position.set(
-
-        pose.transform.position.x,
-
-        pose.transform.position.y,
-
-        pose.transform.position.z
-
-    );
-
-
-    /*
-    Orientación de la superficie.
-    */
-
-    cursor.quaternion.set(
-
-        pose.transform.orientation.x,
-
-        pose.transform.orientation.y,
-
-        pose.transform.orientation.z,
-
-        pose.transform.orientation.w
-
-    );
-
-
-    cursor.visible =
-    true;
-
-
-    /*
-    Cuando todavía no hemos colocado
-    la ventana, la previsualizamos
-    sobre la superficie.
-    */
-
-    if(!placed){
-
-        browserGroup.position.copy(
-            cursor.position
-        );
-
-
-        browserGroup.position.y +=
-        0.55;
-
-
-        /*
-        Orientar el panel hacia el usuario.
-        */
-
-        browserGroup.rotation.set(
-            0,
-            0,
-            0
-        );
-
-    }
-
-}
-
-
-/*
-==========================================================
- TOCAR PARA COLOCAR
-==========================================================
-*/
-
-window.addEventListener(
-    "touchend",
-    function(){
-
-        if(
-            !xrSession ||
-            !cursor.visible
-        ){
-
-            return;
-
-        }
-
-
-        browserGroup.position.copy(
-            cursor.position
-        );
-
-
-        browserGroup.position.y +=
-        0.55;
-
-
-        placed =
-        true;
-
-
-        status.textContent =
-        "VENTANA AR COLOCADA";
-
-    }
-);
-
-
-/*
-==========================================================
- ANIMACIÓN
-==========================================================
-*/
-
-renderer.setAnimationLoop(
-    function(
-        time,
-        frame
-    ){
-
-        /*
-        AR hit test.
-        */
-
-        if(
-            frame &&
-            xrSession
-        ){
-
-            updateHitTest(
-                frame
-            );
-
-        }
-
-
-        /*
-        Pequeña animación 3D.
-        */
-
-        if(
-            !placed
-        ){
-
-            browserCube.rotation.y =
-            Math.sin(
-                time*.00035
-            )*.025;
-
-        }
-
-
-        /*
-        Render.
-        */
-
-        renderer.render(
-            scene,
-            camera
-        );
-
-    }
-);
-
-
-/*
-==========================================================
- REDIMENSIONAR
-==========================================================
-*/
-
-window.addEventListener(
-    "resize",
-    function(){
-
-        camera.aspect =
-        window.innerWidth /
-        window.innerHeight;
-
-        camera.updateProjectionMatrix();
-
-        renderer.setSize(
-            window.innerWidth,
-            window.innerHeight
-        );
-
-    }
-);
-
+startButton.addEventListener("click", startCamera);
 </script>
 
 </body>
