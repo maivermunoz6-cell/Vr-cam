@@ -1,260 +1,158 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>VR Hand Vision 60 FPS Optimized</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;}
-html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;}
-#vr{position:fixed;inset:0;width:100vw;height:100vh;display:flex;background:#000;}
-.eye{position:relative;width:50%;height:100%;overflow:hidden;background:#000;}
-.eye video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#000;}
-.handCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
-#centerLine{position:fixed;left:50%;top:0;width:2px;height:100%;transform:translateX(-50%);background:#000;z-index:20;pointer-events:none;}
-#info{position:fixed;top:15px;left:50%;transform:translateX(-50%);z-index:50;color:#00ffff;background:rgba(0,0,0,.55);border:2px solid rgba(0,255,255,.55);border-radius:10px;padding:8px 15px;font-size:12px;font-weight:bold;letter-spacing:2px;text-shadow:0 0 8px #00ffff;white-space:nowrap;pointer-events:none;}
-#fps{position:fixed;top:15px;right:12px;z-index:50;color:#00ff88;background:rgba(0,0,0,.5);border:1px solid rgba(0,255,136,.4);border-radius:6px;padding:6px 9px;font-size:11px;font-family:monospace;pointer-events:none;}
-#status{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);z-index:50;color:#00ff88;font-size:12px;font-weight:bold;letter-spacing:2px;text-shadow:0 0 8px #00ff88;white-space:nowrap;pointer-events:none;}
-#startScreen{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;color:white;background:radial-gradient(circle,#082020 0%,#020707 45%,#000 100%);}
-#startScreen h1{font-size:clamp(28px,8vw,60px);letter-spacing:5px;margin-bottom:20px;color:#00ffff;text-shadow:0 0 10px #00ffff,0 0 25px #00ffff;}
-#startScreen p{width:85%;max-width:650px;color:#baffff;line-height:1.6;margin-bottom:30px;}
-#startButton{padding:18px 35px;color:#00ffff;background:#001818;border:2px solid #00ffff;border-radius:12px;font-size:18px;font-weight:bold;box-shadow:0 0 12px #00ffff,inset 0 0 15px #003333;}
-#startButton:active{transform:scale(.94);}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>VR Box Esqueleto - MediaPipe</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+        /* Contenedores para cada lente del VR Box */
+        .vr-eye {
+            flex: 1;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-right: 1px solid #111;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Efecto espejo opcional */
+        }
+        #video {
+            display: none;
+        }
+        /* Mensaje de carga inicial */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: sans-serif;
+            font-size: 1.2rem;
+            z-index: 10;
+            pointer-events: none;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+    </style>
+
+    <!-- Librerías de MediaPipe para Detección de Pose y Dibujo -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
-<div id="vr">
-    <div class="eye">
-        <video id="leftVideo" autoplay muted playsinline></video>
-        <canvas id="leftHands" class="handCanvas"></canvas>
+    <div id="loading">Iniciando cámara y modelo de IA...</div>
+
+    <!-- Video oculto que captura la cámara -->
+    <video id="video" autoplay playsinline></video>
+
+    <!-- Pantalla Izquierda VR -->
+    <div class="vr-eye">
+        <canvas id="canvasLeft"></canvas>
     </div>
-    <div class="eye">
-        <video id="rightVideo" autoplay muted playsinline></video>
-        <canvas id="rightHands" class="handCanvas"></canvas>
+
+    <!-- Pantalla Derecha VR -->
+    <div class="vr-eye">
+        <canvas id="canvasRight"></canvas>
     </div>
-</div>
 
-<div id="centerLine"></div>
-<div id="info">VR CAMERA • 60 FPS</div>
-<div id="fps">VIDEO: -- | HAND: --</div>
-<div id="status">CÁMARA DESACTIVADA</div>
-<div id="startScreen">
-    <h1>VR VISION</h1>
-    <p>Cámara trasera optimizada para VR Box con interpolación fluida de alta velocidad.</p>
-    <button id="startButton">ACTIVAR CÁMARA</button>
-</div>
+    <script>
+        const videoElement = document.getElementById('video');
+        const canvasLeft = document.getElementById('canvasLeft');
+        const canvasRight = document.getElementById('canvasRight');
+        const ctxLeft = canvasLeft.getContext('2d');
+        const ctxRight = canvasRight.getContext('2d');
+        const loadingElement = document.getElementById('loading');
 
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+        function onResults(results) {
+            // Ocultar mensaje de carga al recibir el primer frame
+            if (loadingElement.style.display !== 'none') {
+                loadingElement.style.display = 'none';
+            }
 
-<script>
-const leftVideo = document.getElementById("leftVideo");
-const rightVideo = document.getElementById("rightVideo");
-const leftCanvas = document.getElementById("leftHands");
-const rightCanvas = document.getElementById("rightHands");
+            // Sincronizar dimensiones de los lienzos con el video
+            if (canvasLeft.width !== videoElement.videoWidth) {
+                canvasLeft.width = videoElement.videoWidth;
+                canvasLeft.height = videoElement.videoHeight;
+                canvasRight.width = videoElement.videoWidth;
+                canvasRight.height = videoElement.videoHeight;
+            }
 
-// Usar desynchronized para acelerar por hardware el canvas y evitar retrasos
-const leftCtx = leftCanvas.getContext("2d", { alpha: true, desynchronized: true });
-const rightCtx = rightCanvas.getContext("2d", { alpha: true, desynchronized: true });
+            // Dibujar en el ojo izquierdo
+            drawEye(ctxLeft, results);
 
-const startScreen = document.getElementById("startScreen");
-const startButton = document.getElementById("startButton");
-const statusText = document.getElementById("status");
-const fpsText = document.getElementById("fps");
+            // Dibujar en el ojo derecho
+            drawEye(ctxRight, results);
+        }
 
-let stream = null;
-let running = false;
-let detectedHands = [];
-let smoothHands = [];
+        function drawEye(ctx, results) {
+            ctx.save();
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            // 1. Dibujar el fotograma de la cámara de fondo
+            ctx.drawImage(results.image, 0, 0, ctx.canvas.width, ctx.canvas.height);
+            
+            // 2. Dibujar el esqueleto digital si se detectan puntos corporales
+            if (results.poseLandmarks) {
+                // Conexiones del cuerpo (líneas)
+                drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
+                    color: '#00FFCC', 
+                    lineWidth: 4
+                });
+                // Puntos articulares (nodos)
+                drawLandmarks(ctx, results.poseLandmarks, {
+                    color: '#FF0055', 
+                    lineWidth: 2, 
+                    radius: 4
+                });
+            }
+            ctx.restore();
+        }
 
-let renderFrames = 0;
-let detectionFrames = 0;
-let lastFPSUpdate = performance.now();
-let renderFPS = 0;
-let handFPS = 0;
-
-// Configuración de conexiones de la mano
-const connections = [
-    [0,1],[1,2],[2,3],[3,4],
-    [0,5],[5,6],[6,7],[7,8],
-    [5,9],[9,10],[10,11],[11,12],
-    [9,13],[13,14],[14,15],[15,16],
-    [13,17],[17,18],[18,19],[19,20],
-    [0,17]
-];
-
-const hands = new Hands({
-    locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-});
-
-hands.setOptions({
-    maxNumHands: 2,
-    modelComplexity: 0, // Bajamos a 0 para duplicar la velocidad de procesamiento por frame
-    minDetectionConfidence: 0.60,
-    minTrackingConfidence: 0.60
-});
-
-hands.onResults(results => {
-    detectionFrames++;
-    detectedHands = results && results.multiHandLandmarks ? results.multiHandLandmarks : [];
-});
-
-function resizeCanvases() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    const width = Math.floor(window.innerWidth / 2 * dpr);
-    const height = Math.floor(window.innerHeight * dpr);
-
-    if (leftCanvas.width !== width || leftCanvas.height !== height) {
-        leftCanvas.width = width;
-        leftCanvas.height = height;
-        rightCanvas.width = width;
-        rightCanvas.height = height;
-    }
-}
-window.addEventListener("resize", resizeCanvases);
-resizeCanvases();
-
-async function startCamera() {
-    try {
-        statusText.textContent = "ACTIVANDO CÁMARA...";
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: { ideal: "environment" },
-                width: { ideal: 1280, min: 640 },
-                height: { ideal: 720, min: 480 },
-                frameRate: { ideal: 60, max: 60 }
-            },
-            audio: false
+        // Configuración de MediaPipe Pose
+        const pose = new Pose({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
         });
 
-        leftVideo.srcObject = stream;
-        rightVideo.srcObject = stream;
+        pose.setOptions({
+            modelComplexity: 1,      // 0 = Ligero/Rápido, 1 = Balanceado, 2 = Preciso
+            smoothLandmarks: true,
+            enableSegmentation: false,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
 
-        await Promise.all([leftVideo.play(), rightVideo.play()]);
+        pose.onResults(onResults);
 
-        running = true;
-        startScreen.style.display = "none";
-        statusText.textContent = "BUSCANDO MANOS...";
+        // Configuración de la cámara del dispositivo
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await pose.send({ image: videoElement });
+            },
+            width: 1280,
+            height: 720
+        });
 
-        try {
-            if (document.documentElement.requestFullscreen) {
-                await document.documentElement.requestFullscreen();
-            }
-        } catch(e) {}
-
-        // Bucle independiente de inferencia para no bloquear los 60 FPS visuales
-        loopDetection();
-        requestAnimationFrame(render);
-
-    } catch (error) {
-        console.error(error);
-        statusText.textContent = "ERROR DE CÁMARA";
-        alert("No se pudo iniciar la cámara: " + error.message);
-    }
-}
-
-async function loopDetection() {
-    if (!running) return;
-    if (leftVideo.readyState >= 2) {
-        try {
-            await hands.send({ image: leftVideo });
-        } catch (e) {}
-    }
-    // Ejecutar tan rápido como el hardware permita sin bloquear el render
-    setTimeout(loopDetection, 10);
-}
-
-function updateSmoothHands() {
-    if (detectedHands.length === 0) {
-        smoothHands = [];
-        return;
-    }
-
-    if (smoothHands.length !== detectedHands.length) {
-        smoothHands = detectedHands.map(hand => hand.map(p => ({ x: p.x, y: p.y, z: p.z })));
-        return;
-    }
-
-    // Factor de interpolación optimizado (0.6 da mayor agilidad sin perder suavidad)
-    const SMOOTHING = 0.6;
-    for (let h = 0; h < detectedHands.length; h++) {
-        const target = detectedHands[h];
-        const current = smoothHands[h];
-        for (let i = 0; i < target.length; i++) {
-            current[i].x += (target[i].x - current[i].x) * SMOOTHING;
-            current[i].y += (target[i].y - current[i].y) * SMOOTHING;
-            current[i].z += (target[i].z - current[i].z) * SMOOTHING;
-        }
-    }
-}
-
-function drawHand(ctx, landmarks, width, height) {
-    ctx.save();
-    ctx.strokeStyle = "#00ffff";
-    ctx.lineWidth = 3.2;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = "#00ffff";
-
-    for (const connection of connections) {
-        const a = landmarks[connection[0]];
-        const b = landmarks[connection[1]];
-        ctx.beginPath();
-        ctx.moveTo(a.x * width, a.y * height);
-        ctx.lineTo(b.x * width, b.y * height);
-        ctx.stroke();
-    }
-
-    ctx.fillStyle = "#ffffff";
-    ctx.shadowBlur = 15;
-    for (const p of landmarks) {
-        ctx.beginPath();
-        ctx.arc(p.x * width, p.y * height, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    ctx.restore();
-}
-
-function drawScene(ctx, canvas) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const hand of smoothHands) {
-        drawHand(ctx, hand, canvas.width, canvas.height);
-    }
-}
-
-function updateFPS() {
-    const now = performance.now();
-    if (now - lastFPSUpdate >= 1000) {
-        renderFPS = renderFrames;
-        handFPS = detectionFrames;
-        fpsText.textContent = `VIDEO: ${renderFPS} | HAND: ${handFPS}`;
-        renderFrames = 0;
-        detectionFrames = 0;
-        lastFPSUpdate = now;
-
-        statusText.textContent = smoothHands.length > 0 
-            ? `${smoothHands.length} MANO(S) • 60FPS` 
-            : "BUSCANDO MANOS...";
-    }
-}
-
-function render() {
-    if (!running) return;
-
-    updateSmoothHands();
-
-    drawScene(leftCtx, leftCanvas);
-    drawScene(rightCtx, rightCanvas);
-
-    renderFrames++;
-    updateFPS();
-
-    requestAnimationFrame(render);
-}
-
-startButton.addEventListener("click", startCamera);
-</script>
-
+        camera.start().catch(err => {
+            loadingElement.innerText = "Error: No se pudo acceder a la cámara.";
+            console.error(err);
+        });
+    </script>
 </body>
 </html>
