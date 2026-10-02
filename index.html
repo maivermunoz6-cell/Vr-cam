@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>VR Box Esqueleto - MediaPipe</title>
+    <title>VR Box Esqueleto - Optimizado</title>
     <style>
         body {
             margin: 0;
@@ -13,7 +13,6 @@
             width: 100vw;
             height: 100vh;
         }
-        /* Contenedores para cada lente del VR Box */
         .vr-eye {
             flex: 1;
             height: 100%;
@@ -28,12 +27,10 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transform: scaleX(-1); /* Efecto espejo opcional */
         }
         #video {
             display: none;
         }
-        /* Mensaje de carga inicial */
         #loading {
             position: absolute;
             top: 50%;
@@ -50,24 +47,19 @@
         }
     </style>
 
-    <!-- Librerías de MediaPipe para Detección de Pose y Dibujo -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
-    <div id="loading">Iniciando cámara y modelo de IA...</div>
+    <div id="loading">Iniciando cámara trasera y modelo...</div>
 
-    <!-- Video oculto que captura la cámara -->
     <video id="video" autoplay playsinline></video>
 
-    <!-- Pantalla Izquierda VR -->
     <div class="vr-eye">
         <canvas id="canvasLeft"></canvas>
     </div>
-
-    <!-- Pantalla Derecha VR -->
     <div class="vr-eye">
         <canvas id="canvasRight"></canvas>
     </div>
@@ -80,13 +72,13 @@
         const ctxRight = canvasRight.getContext('2d');
         const loadingElement = document.getElementById('loading');
 
+        let processing = false;
+
         function onResults(results) {
-            // Ocultar mensaje de carga al recibir el primer frame
             if (loadingElement.style.display !== 'none') {
                 loadingElement.style.display = 'none';
             }
 
-            // Sincronizar dimensiones de los lienzos con el video
             if (canvasLeft.width !== videoElement.videoWidth) {
                 canvasLeft.width = videoElement.videoWidth;
                 canvasLeft.height = videoElement.videoHeight;
@@ -94,28 +86,21 @@
                 canvasRight.height = videoElement.videoHeight;
             }
 
-            // Dibujar en el ojo izquierdo
             drawEye(ctxLeft, results);
-
-            // Dibujar en el ojo derecho
             drawEye(ctxRight, results);
+            processing = false; // Liberar para el siguiente frame
         }
 
         function drawEye(ctx, results) {
             ctx.save();
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            
-            // 1. Dibujar el fotograma de la cámara de fondo
             ctx.drawImage(results.image, 0, 0, ctx.canvas.width, ctx.canvas.height);
             
-            // 2. Dibujar el esqueleto digital si se detectan puntos corporales
             if (results.poseLandmarks) {
-                // Conexiones del cuerpo (líneas)
                 drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
                     color: '#00FFCC', 
                     lineWidth: 4
                 });
-                // Puntos articulares (nodos)
                 drawLandmarks(ctx, results.poseLandmarks, {
                     color: '#FF0055', 
                     lineWidth: 2, 
@@ -125,13 +110,12 @@
             ctx.restore();
         }
 
-        // Configuración de MediaPipe Pose
         const pose = new Pose({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
         });
 
         pose.setOptions({
-            modelComplexity: 1,      // 0 = Ligero/Rápido, 1 = Balanceado, 2 = Preciso
+            modelComplexity: 0,      // 0 = Más ligero y rápido (evita trabarse en móviles)
             smoothLandmarks: true,
             enableSegmentation: false,
             minDetectionConfidence: 0.5,
@@ -140,19 +124,54 @@
 
         pose.onResults(onResults);
 
-        // Configuración de la cámara del dispositivo
-        const camera = new Camera(videoElement, {
-            onFrame: async () => {
-                await pose.send({ image: videoElement });
-            },
-            width: 1280,
-            height: 720
-        });
+        // Forzar cámara trasera con restricciones explícitas
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { exact: "environment" }, // Forzar cámara trasera
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                });
+                videoElement.srcObject = stream;
+                
+                // Bucle optimizado para enviar frames sin sobrecargar el hilo
+                videoElement.onloadedmetadata = () => {
+                    videoElement.play();
+                    requestAnimationFrame(processFrame);
+                };
+            } catch (err) {
+                console.warn("No se pudo usar 'exact environment', intentando con 'environment' genérico...", err);
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: "environment",
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        }
+                    });
+                    videoElement.srcObject = fallbackStream;
+                    videoElement.onloadedmetadata = () => {
+                        videoElement.play();
+                        requestAnimationFrame(processFrame);
+                    };
+                } catch (err2) {
+                    loadingElement.innerText = "Error: No se pudo acceder a la cámara trasera.";
+                    console.error(err2);
+                }
+            }
+        }
 
-        camera.start().catch(err => {
-            loadingElement.innerText = "Error: No se pudo acceder a la cámara.";
-            console.error(err);
-        });
+        async function processFrame() {
+            if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA && !processing) {
+                processing = true;
+                await pose.send({ image: videoElement });
+            }
+            requestAnimationFrame(processFrame);
+        }
+
+        startCamera();
     </script>
 </body>
 </html>
