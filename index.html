@@ -2,430 +2,217 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Escáner holográfico</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Escáner 3D holográfico</title>
 <style>
-  :root {
-    --fondo: #050b14;
-    --panel: #0a1626;
-    --linea: #17324f;
-    --texto: #d8f1ff;
-    --suave: #6f93ad;
-    --holo: #4cc9ff;
-  }
   * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; }
-  body {
-    display: flex; background: var(--fondo); color: var(--texto);
-    font-family: system-ui, sans-serif; overflow: hidden;
-  }
-  #visor { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; }
-  #caja { position: relative; width: 100%; max-height: 100%; }
-  video, canvas { display: block; width: 100%; height: auto; max-height: 100vh; }
-  canvas { position: absolute; inset: 0; height: 100%; pointer-events: none; }
-  #barra {
-    position: absolute; left: 8px; bottom: 8px; right: 8px;
-    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-  }
-  .chip {
-    background: rgba(5,20,38,.75); border: 1px solid var(--linea);
-    padding: 4px 10px; border-radius: 6px; font-size: 12px; color: var(--texto);
-  }
-  select { background: rgba(5,20,38,.85); color: var(--texto); border: 1px solid var(--linea); border-radius: 6px; padding: 4px 6px; font-size: 12px; }
+  html, body { height: 100%; margin: 0; background: #000; overflow: hidden; font-family: system-ui, sans-serif; }
+  #ojos { position: fixed; inset: 0; display: flex; z-index: 1; }
+  #gl { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
 
-  #panel {
-    width: 40%; max-width: 330px; min-width: 160px;
-    background: var(--panel); border-left: 1px solid var(--linea);
-    display: flex; flex-direction: column; transition: margin-right .2s;
-  }
-  #panel.cerrado { margin-right: calc(-1 * min(40%, 330px)); }
-  #cabecera {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px; border-bottom: 1px solid var(--linea); font-weight: 600; font-size: 14px;
-  }
-  #cuenta { color: var(--holo); }
-  #lista { flex: 1; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
-  #lista li { padding: 8px 10px; border-bottom: 1px solid var(--linea); font-size: 15px; word-break: break-word; }
-  #lista .meta { display: flex; justify-content: space-between; color: var(--suave); font-size: 11px; margin-top: 3px; }
-  #lista .tipo { color: var(--holo); }
-  #vacio { padding: 12px; color: var(--suave); font-size: 13px; }
-  #botones { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--linea); }
-  button {
-    flex: 1; background: transparent; color: var(--texto);
-    border: 1px solid var(--linea); border-radius: 6px;
-    padding: 8px 4px; font-size: 12px; cursor: pointer;
-  }
-  button:hover, button:focus-visible { border-color: var(--holo); outline: none; }
-  #pestana {
-    position: absolute; right: 0; top: 12px; z-index: 5; width: auto; flex: none;
-    background: var(--panel); border-right: none; border-radius: 6px 0 0 6px;
-    padding: 10px 8px; display: none;
-  }
-  body.cerrado #pestana { display: block; }
+  .ojo { --m: 3vmin; flex: 1; min-width: 0; position: relative; overflow: hidden; }
+  body.vr .ojo { --m: 7vmin; }
+  body:not(.vr) .ojo:nth-child(2) { display: none; }
+  .ojo + .ojo { border-left: 1px solid #000; }
+  .ojo video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .ojo::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 14vmin rgba(0,50,110,.55); }
+
+  /* Panel de modelos guardados (arriba izquierda, transparente) */
+  .panel { position: absolute; left: var(--m); top: var(--m); display: grid; grid-template-columns: repeat(2, 13vmin); gap: 1.2vmin; }
+  .mini { aspect-ratio: 1; border: 1px solid rgba(76,201,255,.35); border-radius: 6px; background: rgba(20,100,180,.10); }
+
+  /* Modelo actual (arriba derecha) */
+  .holo { position: absolute; right: var(--m); top: var(--m); width: 38vmin; aspect-ratio: 1; }
+  .holo::before { content: ""; position: absolute; inset: -4%; border: 1px dashed rgba(76,201,255,.45); border-radius: 50%; animation: giro 14s linear infinite; }
+  @keyframes giro { to { transform: rotate(360deg); } }
+  .etq { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 2.8vmin; color: #bfefff; text-shadow: 0 0 6px #4cc9ff; }
+
+  .est { position: absolute; bottom: var(--m); left: 50%; transform: translateX(-50%); font-size: 2.4vmin; color: #7fd8ff; text-shadow: 0 0 6px #000; white-space: nowrap; }
+  #vr { position: fixed; bottom: 1.5vmin; left: 50%; transform: translateX(-50%); z-index: 9; opacity: .55;
+        background: rgba(5,20,38,.8); color: #d8f1ff; border: 1px solid #4cc9ff; border-radius: 20px; padding: 6px 16px; font-size: 13px; }
 </style>
 </head>
 <body>
+<div id="ojos"></div>
+<canvas id="gl"></canvas>
+<button id="vr">Modo VR</button>
 
-<div id="visor">
-  <div id="caja">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="marcos"></canvas>
-  </div>
-  <div id="barra">
-    <span class="chip" id="estado">Iniciando…</span>
-    <select id="idioma" aria-label="Idioma">
-      <option value="eng">Inglés</option>
-      <option value="spa+eng">Español + Inglés</option>
-    </select>
-  </div>
-</div>
-
-<aside id="panel">
-  <div id="cabecera">
-    <span>Detectado <span id="cuenta">0</span></span>
-    <button id="cerrar" style="flex:none;padding:4px 8px" aria-label="Ocultar panel">✕</button>
-  </div>
-  <ul id="lista"></ul>
-  <div id="vacio">Apunta la cámara a un texto, número o letra.</div>
-  <div id="botones">
-    <button id="copiar">Copiar</button>
-    <button id="descargar">Descargar</button>
-    <button id="borrar">Borrar</button>
-  </div>
-</aside>
-<button id="pestana" aria-label="Mostrar panel">◀ Datos</button>
-
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
 <script>
-const $ = id => document.getElementById(id);
-const video = $('video'), marcos = $('marcos'), ctx = marcos.getContext('2d');
-const estado = $('estado'), lista = $('lista'), vacio = $('vacio'), cuenta = $('cuenta');
-const panel = $('panel');
+/* ====== Parámetros (iguales para los dos ojos) ====== */
+const IGNORAR = ['person'];   // clases que no se escanean
+const SEP = 0.05;             // separación entre ojos del holograma (0 = sin profundidad)
+const G = 28;                 // resolución de la malla
+const MAX = 7;                // modelos guardados (1 actual + 6 en el panel)
+const CONFIRMAR = 3;          // detecciones seguidas antes de crear el modelo
 
-const captura = document.createElement('canvas');
-const cctx = captura.getContext('2d', { willReadFrequently: true });
-const MAX_ANCHO = 1000;      // más pequeño = más rápido, más grande = más preciso
-let escala = 1;
+const ES = {bottle:'botella',cup:'taza','cell phone':'celular',laptop:'portátil',keyboard:'teclado',mouse:'ratón',tv:'televisor',
+  chair:'silla',couch:'sofá',book:'libro',clock:'reloj',remote:'control remoto',scissors:'tijeras',backpack:'mochila',bowl:'tazón',
+  apple:'manzana',orange:'naranja',knife:'cuchillo',fork:'tenedor',spoon:'cuchara',vase:'jarrón','potted plant':'planta',bed:'cama',
+  'dining table':'mesa',cat:'gato',dog:'perro',car:'auto',bicycle:'bicicleta',umbrella:'paraguas',handbag:'bolso','wine glass':'copa',
+  toothbrush:'cepillo de dientes','teddy bear':'peluche','sports ball':'pelota',bird:'pájaro'};
 
-/* ---------- Datos guardados ---------- */
-const CLAVE = 'escaner_holo_v2';
-let registros = [];
-try { registros = JSON.parse(localStorage.getItem(CLAVE) || '[]'); } catch (e) {}
-const guardar = () => { try { localStorage.setItem(CLAVE, JSON.stringify(registros)); } catch (e) {} };
+const $ = s => document.querySelector(s);
+const est = t => document.querySelectorAll('.est').forEach(e => e.textContent = t);
 
-const norm = t => t.toLowerCase();
+/* ====== Dos ojos con la misma estructura ====== */
+let vr = false;
+const ojos = [0, 1].map(() => {
+  const d = document.createElement('div');
+  d.className = 'ojo';
+  d.innerHTML = '<video autoplay playsinline muted></video><div class="panel">' + '<div class="mini"></div>'.repeat(6) +
+                '</div><div class="holo"><span class="etq"></span></div><div class="est">Iniciando…</div>';
+  $('#ojos').appendChild(d);
+  return { video: d.querySelector('video'), holo: d.querySelector('.holo'), etq: d.querySelector('.etq'),
+           minis: [...d.querySelectorAll('.mini')] };
+});
 
-function clasificar(t) {
-  if (/@/.test(t) && /\./.test(t)) return 'correo';
-  if (/^(https?:\/\/|www\.)/i.test(t)) return 'enlace';
-  if (/^[+-]?\d+([.,]\d+)?$/.test(t)) return 'número';
-  if (/^\p{L}$/u.test(t)) return 'letra';
-  if (/^\p{L}+$/u.test(t)) return 'palabra';
-  if (/\p{L}/u.test(t) && /\d/.test(t)) return 'código';
-  return 'símbolo';
-}
+/* ====== Three.js: un solo lienzo con una vista por recuadro ====== */
+const R = new THREE.WebGLRenderer({ canvas: $('#gl'), alpha: true, antialias: true });
+R.setPixelRatio(Math.min(devicePixelRatio, 2));
+R.setClearColor(0x000000, 0);
+R.autoClear = false;
+const escena = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 20);
+const ajustar = () => R.setSize(innerWidth, innerHeight);
+addEventListener('resize', ajustar); ajustar();
 
-function pintarLista() {
-  lista.innerHTML = '';
-  registros.slice().reverse().forEach(r => {
-    const li = document.createElement('li');
-    li.textContent = r.texto;
-    const m = document.createElement('div');
-    m.className = 'meta';
-    const a = document.createElement('span');
-    a.className = 'tipo';
-    a.textContent = r.tipo + (r.veces > 1 ? ' ×' + r.veces : '');
-    const b = document.createElement('span');
-    b.textContent = r.conf + '% · ' + r.hora;
-    m.append(a, b);
-    li.appendChild(m);
-    lista.appendChild(li);
-  });
-  cuenta.textContent = registros.length;
-  vacio.style.display = registros.length ? 'none' : 'block';
-}
+const mLin = new THREE.LineBasicMaterial({ color: 0x4cc9ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
+const mPun = new THREE.PointsMaterial({ color: 0xa5ecff, size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
 
-function agregar(texto, tipo, conf) {
-  const k = norm(texto);
-  const ya = registros.find(r => norm(r.texto) === k);
-  const hora = new Date().toLocaleTimeString();
-  if (ya) {
-    ya.veces++; ya.hora = hora; ya.conf = Math.max(ya.conf, conf);
-  } else {
-    registros.push({ texto, tipo, conf, veces: 1, hora });
+/* ====== Malla 3D a partir del recorte del objeto ====== */
+function crearModelo(v, [bx, by, bw, bh]) {
+  const c = document.createElement('canvas');
+  c.width = c.height = G;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(v, Math.max(0, bx), Math.max(0, by), bw, bh, 0, 0, G, G);
+  const px = x.getImageData(0, 0, G, G).data;
+
+  const m = Math.max(bw, bh), sx = bw / m, sy = bh / m, sz = 0.15 + 0.4 * Math.min(sx, sy);
+  const cara = [[], []];
+  for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) {
+    const u = i / (G - 1) * 2 - 1, w = j / (G - 1) * 2 - 1;
+    const r = Math.pow(Math.pow(Math.abs(u), 4) + Math.pow(Math.abs(w), 4), 0.25);
+    const env = Math.sqrt(Math.max(0, 1 - r * r));                 // forma redondeada
+    const o = (j * G + i) * 4;
+    const L = (px[o] * 0.3 + px[o + 1] * 0.59 + px[o + 2] * 0.11) / 255;   // relieve según la luz del objeto
+    const z = env * (0.55 + 0.45 * L) * sz;
+    cara[0].push(u * sx, -w * sy, z);
+    cara[1].push(u * sx, -w * sy, -z);
   }
-  guardar(); pintarLista();
-}
-
-function alternarPanel(cerrar) {
-  panel.classList.toggle('cerrado', cerrar);
-  document.body.classList.toggle('cerrado', cerrar);
-}
-$('cerrar').onclick = () => alternarPanel(true);
-$('pestana').onclick = () => alternarPanel(false);
-$('copiar').onclick = async () => {
-  try { await navigator.clipboard.writeText(registros.map(r => r.texto).join('\n')); estado.textContent = 'Copiado'; }
-  catch (e) { estado.textContent = 'No se pudo copiar'; }
-};
-$('descargar').onclick = () => {
-  const t = registros.map(r => `${r.hora}\t${r.tipo}\t${r.conf}%\t${r.texto}`).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([t], { type: 'text/plain' }));
-  a.download = 'datos_escaneados.txt';
-  a.click();
-};
-$('borrar').onclick = () => { registros = []; guardar(); pintarLista(); };
-
-/* ---------- Seguimiento de palabras ---------- */
-let tracks = [];
-let ultimoId = 0;
-
-function iou(a, b) {
-  const x0 = Math.max(a.tx, b.x0), y0 = Math.max(a.ty, b.y0);
-  const x1 = Math.min(a.tx + a.tw, b.x1), y1 = Math.min(a.ty + a.th, b.y1);
-  const inter = Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
-  const union = a.tw * a.th + (b.x1 - b.x0) * (b.y1 - b.y0) - inter;
-  return union > 0 ? inter / union : 0;
-}
-
-function actualizarTracks(dets) {
-  const ahora = performance.now();
-  const usados = new Set();
-  const maxDist = marcos.width * 0.2;
-
-  dets.forEach(d => {
-    let mejor = null, mejorPuntos = 0;
-    tracks.forEach(t => {
-      if (usados.has(t)) return;
-      let p = iou(t, d);
-      if (norm(t.text) === norm(d.text)) {
-        const dx = (t.tx + t.tw / 2) - (d.x0 + d.x1) / 2;
-        const dy = (t.ty + t.th / 2) - (d.y0 + d.y1) / 2;
-        if (Math.hypot(dx, dy) < maxDist) p += 0.3;
-      }
-      if (p > mejorPuntos && p > 0.2) { mejorPuntos = p; mejor = t; }
-    });
-
-    if (mejor) {
-      usados.add(mejor);
-      mejor.tx = d.x0; mejor.ty = d.y0; mejor.tw = d.x1 - d.x0; mejor.th = d.y1 - d.y0;
-      if (d.conf >= mejor.conf) mejor.text = d.text;
-      mejor.conf = mejor.conf * 0.5 + d.conf * 0.5;
-      mejor.hits++; mejor.seen = ahora;
-    } else {
-      const t = {
-        id: ++ultimoId, text: d.text, conf: d.conf,
-        x: d.x0, y: d.y0, w: d.x1 - d.x0, h: d.y1 - d.y0,
-        tx: d.x0, ty: d.y0, tw: d.x1 - d.x0, th: d.y1 - d.y0,
-        born: ahora, seen: ahora, hits: 1, saved: false, fase: Math.random()
-      };
-      usados.add(t);
-      tracks.push(t);
-    }
-  });
-
-  tracks.forEach(t => {
-    if (!t.saved && (t.hits >= 2 || t.conf >= 92)) {
-      t.saved = true;
-      agregar(t.text, clasificar(t.text), Math.round(t.conf));
-    }
-  });
-}
-
-/* ---------- Dibujo holográfico ---------- */
-function esquinas(x, y, w, h, l) {
-  ctx.beginPath();
-  ctx.moveTo(x, y + l); ctx.lineTo(x, y); ctx.lineTo(x + l, y);
-  ctx.moveTo(x + w - l, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + l);
-  ctx.moveTo(x + w, y + h - l); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - l, y + h);
-  ctx.moveTo(x + l, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - l);
-  ctx.stroke();
-}
-
-function dibujarTrack(t, ahora, u) {
-  const visible = t.hits >= 2 || t.conf >= 80;
-  if (!visible) return;
-
-  const sinVer = ahora - t.seen;
-  const entrada = Math.min(1, (ahora - t.born) / 180);
-  const salida = sinVer > 350 ? Math.max(0, 1 - (sinVer - 350) / 450) : 1;
-  const alfa = entrada * salida;
-  if (alfa <= 0) return;
-
-  const pad = 5 * u;
-  const x = t.x - pad, y = t.y - pad, w = t.w + pad * 2, h = t.h + pad * 2;
-
-  ctx.save();
-  ctx.globalAlpha = alfa;
-
-  // Cristal azul transparente
-  const g = ctx.createLinearGradient(x, y, x, y + h);
-  g.addColorStop(0, 'rgba(76,201,255,.30)');
-  g.addColorStop(1, 'rgba(40,120,255,.10)');
-  ctx.fillStyle = g;
-  ctx.fillRect(x, y, w, h);
-
-  // Borde con resplandor
-  ctx.shadowColor = '#4cc9ff';
-  ctx.shadowBlur = 14 * u;
-  ctx.strokeStyle = 'rgba(130,225,255,.55)';
-  ctx.lineWidth = 1.2 * u;
-  ctx.strokeRect(x, y, w, h);
-
-  // Esquinas brillantes
-  ctx.strokeStyle = 'rgba(190,240,255,.95)';
-  ctx.lineWidth = 2.6 * u;
-  esquinas(x, y, w, h, Math.max(7 * u, Math.min(w, h) * 0.3));
-
-  // Línea de escaneo dentro del recuadro
-  ctx.shadowBlur = 8 * u;
-  const sy = y + (((ahora / 1100) + t.fase) % 1) * h;
-  ctx.fillStyle = 'rgba(200,245,255,.6)';
-  ctx.fillRect(x, sy, w, 1.6 * u);
-
-  // Etiqueta
-  ctx.shadowBlur = 0;
-  const fs = Math.max(11, 12.5 * u);
-  ctx.font = `600 ${fs}px system-ui, sans-serif`;
-  const etiqueta = `${t.text}  ${Math.round(t.conf)}%`;
-  const cw = ctx.measureText(etiqueta).width + 12 * u;
-  const ch = fs + 8 * u;
-  let ly = y - ch - 3 * u;
-  if (ly < 0) ly = y + h + 3 * u;
-  const lx = Math.min(Math.max(0, x), marcos.width - cw);
-  ctx.fillStyle = 'rgba(6,30,56,.78)';
-  ctx.fillRect(lx, ly, cw, ch);
-  ctx.strokeStyle = 'rgba(76,201,255,.7)';
-  ctx.lineWidth = 1 * u;
-  ctx.strokeRect(lx, ly, cw, ch);
-  ctx.fillStyle = '#c8f2ff';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(etiqueta, lx + 6 * u, ly + ch / 2 + 0.5);
-
-  ctx.restore();
-}
-
-let tPrev = performance.now();
-function animar(ahora) {
-  const dt = Math.min(0.1, (ahora - tPrev) / 1000);
-  tPrev = ahora;
-  const k = 1 - Math.exp(-dt * 16);   // suavizado independiente de los FPS
-  const u = Math.max(1, marcos.width / 800);
-
-  ctx.clearRect(0, 0, marcos.width, marcos.height);
-
-  tracks = tracks.filter(t => ahora - t.seen < 800);
-  tracks.forEach(t => {
-    t.x += (t.tx - t.x) * k;
-    t.y += (t.ty - t.y) * k;
-    t.w += (t.tw - t.w) * k;
-    t.h += (t.th - t.h) * k;
-    dibujarTrack(t, ahora, u);
-  });
-
-  requestAnimationFrame(animar);
-}
-
-/* ---------- Lectura (OCR) ---------- */
-function valida(w) {
-  const t = w.text;
-  if (!t || !/[\p{L}\p{N}]/u.test(t)) return false;
-  const alnum = (t.match(/[\p{L}\p{N}]/gu) || []).length;
-  if (alnum / t.length < 0.6) return false;
-  const alto = w.bbox.y1 - w.bbox.y0, ancho = w.bbox.x1 - w.bbox.x0;
-  if (alto < 9 || ancho / alto > 40) return false;
-  const minimo = t.length === 1 ? 90 : t.length === 2 ? 80 : 65;
-  return w.confidence >= minimo;
-}
-
-let worker = null, cambiandoIdioma = false;
-
-async function crearWorker(idioma) {
-  const w = await Tesseract.createWorker(idioma);
-  await w.setParameters({
-    tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT,   // busca texto suelto por toda la imagen
-    user_defined_dpi: '200',
-    preserve_interword_spaces: '1'
-  });
-  return w;
-}
-
-$('idioma').onchange = async e => {
-  cambiandoIdioma = true;
-  estado.textContent = 'Cambiando idioma…';
-  try { await worker.reinitialize(e.target.value);
-        await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT, user_defined_dpi: '200' });
-  } catch (err) { estado.textContent = 'No se pudo cambiar el idioma'; }
-  cambiandoIdioma = false;
-};
-
-async function ciclo() {
-  if (cambiandoIdioma) { setTimeout(ciclo, 200); return; }
-  const t0 = performance.now();
-  // Escala de grises + más contraste: el OCR lee mejor
-  cctx.filter = 'grayscale(1) contrast(1.5) brightness(1.05)';
-  cctx.drawImage(video, 0, 0, captura.width, captura.height);
-  cctx.filter = 'none';
-
-  try {
-    const { data } = await worker.recognize(captura);
-    const dets = [];
-    (data.words || []).forEach(w => {
-      if (!valida(w)) return;
-      const limpio = w.text.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
-      if (!limpio) return;
-      dets.push({
-        text: limpio, conf: w.confidence,
-        x0: w.bbox.x0 / escala, y0: w.bbox.y0 / escala,
-        x1: w.bbox.x1 / escala, y1: w.bbox.y1 / escala
-      });
-    });
-    actualizarTracks(dets);
-    estado.textContent = `Escaneando · ${Math.round(performance.now() - t0)} ms · ${dets.length} en vista`;
-  } catch (e) {
-    estado.textContent = 'Error al leer: ' + e.message;
+  const seg = [];
+  for (const s of cara) for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) {
+    const a = (j * G + i) * 3;
+    if (i < G - 1) seg.push(s[a], s[a + 1], s[a + 2], s[a + 3], s[a + 4], s[a + 5]);
+    if (j < G - 1) { const b = a + G * 3; seg.push(s[a], s[a + 1], s[a + 2], s[b], s[b + 1], s[b + 2]); }
   }
-  setTimeout(ciclo, 0);
+  const gl = new THREE.BufferGeometry();
+  gl.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
+  const gp = new THREE.BufferGeometry();
+  gp.setAttribute('position', new THREE.Float32BufferAttribute(cara[0].concat(cara[1]), 3));
+  const g = new THREE.Group();
+  g.add(new THREE.LineSegments(gl, mLin), new THREE.Points(gp, mPun));
+  return { g, s: 0.95 / Math.hypot(sx, sy, sz) };
 }
 
-/* ---------- Inicio ---------- */
-async function iniciar() {
-  try {
-    let stream;
+/* ====== Modelos guardados ====== */
+let almacen = [];
+const liberar = it => it.g.traverse(o => o.geometry && o.geometry.dispose());
+const etiquetar = it => ojos.forEach(o => o.etq.textContent = it ? `${it.nombre} ${it.p}%` : '');
+
+function agregar(c) {
+  const { g, s } = crearModelo(ojos[0].video, c.bbox);
+  almacen = almacen.filter(a => a.clase !== c.class || (liberar(a), false));
+  almacen.unshift({ clase: c.class, nombre: ES[c.class] || c.class, p: Math.round(c.score * 100), g, s, t0: performance.now() });
+  while (almacen.length > MAX) liberar(almacen.pop());
+  etiquetar(almacen[0]);
+}
+
+/* ====== Dibujo (mismo contenido en cada ojo) ====== */
+function dibujar(el, it, t) {
+  if (!it) return;
+  const r = el.getBoundingClientRect();
+  if (!r.width) return;
+  const vx = r.left, vy = innerHeight - r.bottom;
+  R.setViewport(vx, vy, r.width, r.height);
+  R.setScissor(vx, vy, r.width, r.height);
+  const k = Math.min(1, (t - it.t0) / 500);
+  it.g.rotation.set(0.25, t / 1100, 0);
+  it.g.scale.setScalar(it.s * (1 - Math.pow(1 - k, 3) * 0.5));
+  escena.clear(); escena.add(it.g);
+  R.render(escena, cam);
+}
+
+function pintar(t) {
+  requestAnimationFrame(pintar);
+  R.setScissorTest(false);
+  R.setViewport(0, 0, innerWidth, innerHeight);
+  R.clear();
+  R.setScissorTest(true);
+  for (let k = 0; k < (vr ? 2 : 1); k++) {
+    const o = ojos[k];
+    cam.position.set(vr ? (k - 0.5) * 2 * SEP : 0, 0, 3.8);
+    cam.lookAt(0, 0, 0);
+    dibujar(o.holo, almacen[0], t);
+    o.minis.forEach((e, i) => dibujar(e, almacen[i + 1], t));
+  }
+}
+
+/* ====== Detección de objetos ====== */
+let modelo, candidato = null, cuenta = 0;
+
+function procesar(c) {
+  if (!c) { candidato = null; cuenta = 0; est('Buscando objetos…'); return; }
+  if (almacen[0] && c.class === almacen[0].clase) { candidato = null; cuenta = 0; est('Objeto: ' + almacen[0].nombre); return; }
+  cuenta = c.class === candidato ? cuenta + 1 : 1;
+  candidato = c.class;
+  est('Escaneando ' + (ES[c.class] || c.class) + '…');
+  if (cuenta >= CONFIRMAR) { agregar(c); candidato = null; cuenta = 0; }
+}
+
+async function detectar() {
+  const v = ojos[0].video;
+  if (v.readyState >= 2) {
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
-    } catch (e) {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    }
-    video.srcObject = stream;
-    await video.play();
-  } catch (e) {
-    estado.textContent = 'Cámara no disponible: ' + e.message;
-    return;
+      const r = await modelo.detect(v, 8);
+      const c = r.filter(o => o.score >= 0.6 && !IGNORAR.includes(o.class))
+                 .sort((a, b) => b.bbox[2] * b.bbox[3] - a.bbox[2] * a.bbox[3])[0];
+      procesar(c);
+    } catch (e) { est('Error: ' + e.message); }
   }
-
-  marcos.width = video.videoWidth;
-  marcos.height = video.videoHeight;
-  escala = Math.min(1, MAX_ANCHO / video.videoWidth);
-  captura.width = Math.round(video.videoWidth * escala);
-  captura.height = Math.round(video.videoHeight * escala);
-
-  requestAnimationFrame(animar);
-
-  estado.textContent = 'Cargando lector…';
-  try {
-    worker = await crearWorker($('idioma').value);
-  } catch (e) {
-    estado.textContent = 'No se pudo cargar el lector (¿hay internet?)';
-    return;
-  }
-  ciclo();
+  setTimeout(detectar, 50);
 }
 
-pintarLista();
-iniciar();
+/* ====== Modo VR (pantalla dividida) ====== */
+$('#vr').onclick = async () => {
+  vr = !vr;
+  document.body.classList.toggle('vr', vr);
+  $('#vr').textContent = vr ? 'Salir de VR' : 'Modo VR';
+  try {
+    if (vr) { await document.documentElement.requestFullscreen(); await screen.orientation.lock('landscape'); }
+    else { screen.orientation.unlock(); await document.exitFullscreen(); }
+  } catch (e) {}
+  ojos[1].video.play().catch(() => {});
+};
+
+/* ====== Inicio ====== */
+(async () => {
+  let s;
+  try {
+    try {
+      s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } });
+    } catch (e) { s = await navigator.mediaDevices.getUserMedia({ video: true }); }
+  } catch (e) { est('Cámara no disponible: ' + e.message); return; }
+  ojos.forEach(o => { o.video.srcObject = s; o.video.play().catch(() => {}); });
+  requestAnimationFrame(pintar);
+  est('Cargando detector…');
+  try { modelo = await cocoSsd.load({ base: 'lite_mobilenet_v2' }); }
+  catch (e) { est('No se pudo cargar el detector (¿hay internet?)'); return; }
+  est('Buscando objetos…');
+  detectar();
+})();
 </script>
 </body>
 </html>
