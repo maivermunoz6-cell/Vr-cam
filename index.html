@@ -1,177 +1,272 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>VR Box Esqueleto - Optimizado</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: #000;
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-        }
-        .vr-eye {
-            flex: 1;
-            height: 100%;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-right: 1px solid #111;
-        }
-        canvas {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        #video {
-            display: none;
-        }
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-family: sans-serif;
-            font-size: 1.2rem;
-            z-index: 10;
-            pointer-events: none;
-            background: rgba(0,0,0,0.7);
-            padding: 10px 20px;
-            border-radius: 8px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escáner de texto</title>
+<style>
+  :root {
+    --fondo: #0d1117;
+    --panel: #161b22;
+    --linea: #2b3440;
+    --texto: #e6edf3;
+    --suave: #8b98a5;
+    --marca: #3ddc97;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: system-ui, sans-serif;
+    overflow: hidden;
+  }
 
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  /* Cámara */
+  #visor {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+  }
+  #caja { position: relative; width: 100%; max-height: 100%; }
+  video, canvas { display: block; width: 100%; height: auto; max-height: 100vh; }
+  canvas { position: absolute; inset: 0; height: 100%; pointer-events: none; }
+  #estado {
+    position: absolute; left: 8px; bottom: 8px;
+    background: rgba(0,0,0,.65);
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 13px;
+  }
+
+  /* Panel derecho */
+  #panel {
+    width: 38%;
+    max-width: 320px;
+    min-width: 150px;
+    background: var(--panel);
+    border-left: 1px solid var(--linea);
+    display: flex;
+    flex-direction: column;
+    transition: margin-right .2s;
+  }
+  #panel.cerrado { margin-right: calc(-1 * min(38%, 320px)); }
+  #cabecera {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px; border-bottom: 1px solid var(--linea);
+    font-weight: 600; font-size: 14px;
+  }
+  #cuenta { color: var(--marca); }
+  #lista { flex: 1; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+  #lista li {
+    padding: 8px 10px; border-bottom: 1px solid var(--linea);
+    font-size: 15px; word-break: break-word;
+  }
+  #lista small { display: block; color: var(--suave); font-size: 11px; margin-top: 2px; }
+  #vacio { padding: 12px; color: var(--suave); font-size: 13px; }
+  #botones { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--linea); }
+  button {
+    flex: 1; background: transparent; color: var(--texto);
+    border: 1px solid var(--linea); border-radius: 6px;
+    padding: 8px 4px; font-size: 12px; cursor: pointer;
+  }
+  button:hover, button:focus-visible { border-color: var(--marca); outline: none; }
+
+  /* Pestaña para abrir/cerrar */
+  #pestana {
+    position: absolute; right: 0; top: 12px; z-index: 5;
+    width: auto; flex: none;
+    background: var(--panel);
+    border-radius: 6px 0 0 6px;
+    border-right: none;
+    padding: 10px 8px;
+    display: none;
+  }
+  #panel.cerrado ~ #pestana, body.cerrado #pestana { display: block; }
+</style>
 </head>
 <body>
 
-    <div id="loading">Iniciando cámara trasera y modelo...</div>
+<div id="visor">
+  <div id="caja">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="marcos"></canvas>
+  </div>
+  <div id="estado">Iniciando…</div>
+</div>
 
-    <video id="video" autoplay playsinline></video>
+<aside id="panel">
+  <div id="cabecera">
+    <span>Detectado <span id="cuenta">0</span></span>
+    <button id="cerrar" style="flex:none;padding:4px 8px" aria-label="Ocultar panel">✕</button>
+  </div>
+  <ul id="lista"></ul>
+  <div id="vacio">Apunta la cámara a un texto, número o letra.</div>
+  <div id="botones">
+    <button id="copiar">Copiar</button>
+    <button id="descargar">Descargar</button>
+    <button id="borrar">Borrar</button>
+  </div>
+</aside>
+<button id="pestana" aria-label="Mostrar panel">◀ Datos</button>
 
-    <div class="vr-eye">
-        <canvas id="canvasLeft"></canvas>
-    </div>
-    <div class="vr-eye">
-        <canvas id="canvasRight"></canvas>
-    </div>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+const video = document.getElementById('video');
+const marcos = document.getElementById('marcos');
+const ctx = marcos.getContext('2d');
+const estado = document.getElementById('estado');
+const lista = document.getElementById('lista');
+const vacio = document.getElementById('vacio');
+const cuenta = document.getElementById('cuenta');
+const panel = document.getElementById('panel');
+const pestana = document.getElementById('pestana');
 
-    <script>
-        const videoElement = document.getElementById('video');
-        const canvasLeft = document.getElementById('canvasLeft');
-        const canvasRight = document.getElementById('canvasRight');
-        const ctxLeft = canvasLeft.getContext('2d');
-        const ctxRight = canvasRight.getContext('2d');
-        const loadingElement = document.getElementById('loading');
+const captura = document.createElement('canvas');
+const cctx = captura.getContext('2d');
 
-        let processing = false;
+let registros = [];
+const CLAVE = 'escaner_datos';
 
-        function onResults(results) {
-            if (loadingElement.style.display !== 'none') {
-                loadingElement.style.display = 'none';
-            }
+// Cargar datos guardados
+try {
+  registros = JSON.parse(localStorage.getItem(CLAVE) || '[]');
+} catch (e) { registros = []; }
 
-            if (canvasLeft.width !== videoElement.videoWidth) {
-                canvasLeft.width = videoElement.videoWidth;
-                canvasLeft.height = videoElement.videoHeight;
-                canvasRight.width = videoElement.videoWidth;
-                canvasRight.height = videoElement.videoHeight;
-            }
+function guardar() {
+  try { localStorage.setItem(CLAVE, JSON.stringify(registros)); } catch (e) {}
+}
 
-            drawEye(ctxLeft, results);
-            drawEye(ctxRight, results);
-            processing = false; // Liberar para el siguiente frame
-        }
+function pintarLista() {
+  lista.innerHTML = '';
+  registros.slice().reverse().forEach(r => {
+    const li = document.createElement('li');
+    li.textContent = r.texto;
+    const s = document.createElement('small');
+    s.textContent = r.hora;
+    li.appendChild(s);
+    lista.appendChild(li);
+  });
+  cuenta.textContent = registros.length;
+  vacio.style.display = registros.length ? 'none' : 'block';
+}
 
-        function drawEye(ctx, results) {
-            ctx.save();
-            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            ctx.drawImage(results.image, 0, 0, ctx.canvas.width, ctx.canvas.height);
-            
-            if (results.poseLandmarks) {
-                drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
-                    color: '#00FFCC', 
-                    lineWidth: 4
-                });
-                drawLandmarks(ctx, results.poseLandmarks, {
-                    color: '#FF0055', 
-                    lineWidth: 2, 
-                    radius: 4
-                });
-            }
-            ctx.restore();
-        }
+function agregar(texto) {
+  if (registros.some(r => r.texto.toLowerCase() === texto.toLowerCase())) return;
+  registros.push({ texto, hora: new Date().toLocaleTimeString() });
+  guardar();
+  pintarLista();
+}
 
-        const pose = new Pose({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
-        });
+// Panel
+function alternarPanel(cerrar) {
+  panel.classList.toggle('cerrado', cerrar);
+  document.body.classList.toggle('cerrado', cerrar);
+}
+document.getElementById('cerrar').onclick = () => alternarPanel(true);
+pestana.onclick = () => alternarPanel(false);
 
-        pose.setOptions({
-            modelComplexity: 0,      // 0 = Más ligero y rápido (evita trabarse en móviles)
-            smoothLandmarks: true,
-            enableSegmentation: false,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
+document.getElementById('copiar').onclick = async () => {
+  const t = registros.map(r => r.texto).join('\n');
+  try { await navigator.clipboard.writeText(t); estado.textContent = 'Copiado'; }
+  catch (e) { estado.textContent = 'No se pudo copiar'; }
+};
+document.getElementById('descargar').onclick = () => {
+  const t = registros.map(r => r.hora + '  ' + r.texto).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([t], { type: 'text/plain' }));
+  a.download = 'datos_escaneados.txt';
+  a.click();
+};
+document.getElementById('borrar').onclick = () => {
+  registros = [];
+  guardar();
+  pintarLista();
+};
 
-        pose.onResults(onResults);
+// Dibujar recuadros
+function dibujar(palabras) {
+  ctx.clearRect(0, 0, marcos.width, marcos.height);
+  const grosor = Math.max(2, marcos.width / 300);
+  ctx.lineWidth = grosor;
+  ctx.strokeStyle = '#3ddc97';
+  ctx.fillStyle = 'rgba(61,220,151,.15)';
+  ctx.font = Math.max(14, marcos.width / 45) + 'px system-ui, sans-serif';
+  ctx.textBaseline = 'bottom';
+  palabras.forEach(w => {
+    const { x0, y0, x1, y1 } = w.bbox;
+    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    const ancho = ctx.measureText(w.text).width + 8;
+    ctx.fillStyle = '#3ddc97';
+    ctx.fillRect(x0, y0 - parseInt(ctx.font) - 4, ancho, parseInt(ctx.font) + 4);
+    ctx.fillStyle = '#0d1117';
+    ctx.fillText(w.text, x0 + 4, y0 - 2);
+    ctx.fillStyle = 'rgba(61,220,151,.15)';
+  });
+}
 
-        // Forzar cámara trasera con restricciones explícitas
-        async function startCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: { exact: "environment" }, // Forzar cámara trasera
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }
-                });
-                videoElement.srcObject = stream;
-                
-                // Bucle optimizado para enviar frames sin sobrecargar el hilo
-                videoElement.onloadedmetadata = () => {
-                    videoElement.play();
-                    requestAnimationFrame(processFrame);
-                };
-            } catch (err) {
-                console.warn("No se pudo usar 'exact environment', intentando con 'environment' genérico...", err);
-                try {
-                    const fallbackStream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: "environment",
-                            width: { ideal: 640 },
-                            height: { ideal: 480 }
-                        }
-                    });
-                    videoElement.srcObject = fallbackStream;
-                    videoElement.onloadedmetadata = () => {
-                        videoElement.play();
-                        requestAnimationFrame(processFrame);
-                    };
-                } catch (err2) {
-                    loadingElement.innerText = "Error: No se pudo acceder a la cámara trasera.";
-                    console.error(err2);
-                }
-            }
-        }
+function valida(w) {
+  const t = w.text.trim();
+  if (!t) return false;
+  if (!/[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]/.test(t)) return false;
+  const minimo = t.length === 1 ? 88 : 70;
+  return w.confidence >= minimo;
+}
 
-        async function processFrame() {
-            if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA && !processing) {
-                processing = true;
-                await pose.send({ image: videoElement });
-            }
-            requestAnimationFrame(processFrame);
-        }
+async function iniciar() {
+  // Cámara
+  try {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
+      });
+    } catch (e) {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    }
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) {
+    estado.textContent = 'Cámara no disponible: ' + e.message;
+    return;
+  }
 
-        startCamera();
-    </script>
+  marcos.width = captura.width = video.videoWidth;
+  marcos.height = captura.height = video.videoHeight;
+
+  // OCR
+  estado.textContent = 'Cargando lector de texto…';
+  let worker;
+  try {
+    worker = await Tesseract.createWorker('spa+eng');
+  } catch (e) {
+    estado.textContent = 'No se pudo cargar el lector (¿hay internet?)';
+    return;
+  }
+  estado.textContent = 'Escaneando…';
+
+  async function ciclo() {
+    cctx.drawImage(video, 0, 0, captura.width, captura.height);
+    try {
+      const { data } = await worker.recognize(captura);
+      const buenas = (data.words || []).filter(valida);
+      dibujar(buenas);
+      buenas.forEach(w => agregar(w.text.trim()));
+      estado.textContent = buenas.length ? 'Texto detectado' : 'Escaneando…';
+    } catch (e) {
+      estado.textContent = 'Error al leer: ' + e.message;
+    }
+    setTimeout(ciclo, 300);
+  }
+  ciclo();
+}
+
+pintarLista();
+iniciar();
+</script>
 </body>
 </html>
