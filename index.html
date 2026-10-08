@@ -3,193 +3,213 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Escáner 3D holográfico</title>
+<title>Cámara VR con HUD</title>
 <style>
   * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; background: #000; overflow: hidden; font-family: system-ui, sans-serif; }
-  #ojos { position: fixed; inset: 0; display: flex; z-index: 1; }
-  #gl { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
-
+  html, body { height: 100%; margin: 0; background: #000; overflow: hidden; }
+  #ojos { position: fixed; inset: 0; display: flex; }
   .ojo { --m: 3vmin; flex: 1; min-width: 0; position: relative; overflow: hidden; }
   body.vr .ojo { --m: 7vmin; }
   body:not(.vr) .ojo:nth-child(2) { display: none; }
   .ojo + .ojo { border-left: 1px solid #000; }
   .ojo video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .ojo::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 14vmin rgba(0,50,110,.55); }
+  .ojo::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 16vmin rgba(0,50,110,.6); }
 
-  /* Panel de modelos guardados (arriba izquierda, transparente) */
-  .panel { position: absolute; left: var(--m); top: var(--m); display: grid; grid-template-columns: repeat(2, 13vmin); gap: 1.2vmin; }
-  .mini { aspect-ratio: 1; border: 1px solid rgba(76,201,255,.35); border-radius: 6px; background: rgba(20,100,180,.10); }
+  /* Paneles transparentes */
+  .p {
+    position: absolute; color: #bfefff;
+    font: 2.6vmin/1.35 ui-monospace, Menlo, monospace;
+    background: rgba(10,60,110,.12);
+    border: 1px solid rgba(76,201,255,.4); border-left: 2px solid #4cc9ff; border-radius: 3px;
+    padding: .8vmin 1.2vmin; text-shadow: 0 0 5px rgba(76,201,255,.7);
+  }
+  .p canvas { display: block; width: 100%; height: 100%; }
+  .t { color: #6fb9dd; font-size: 2.1vmin; margin-bottom: .3vmin; }
+  .tl { left: var(--m); top: var(--m); width: 27vmin; }
+  .tr { right: var(--m); top: var(--m); width: 27vmin; }
+  .brj { left: 50%; top: var(--m); transform: translateX(-50%); width: 34vmin; height: 6vmin; padding: 0; }
+  .ml { left: var(--m); top: 50%; transform: translateY(-50%); width: 11vmin; height: 22vmin; display: flex; gap: .8vmin; align-items: flex-end; }
+  .ml i { flex: 1; height: 30%; background: linear-gradient(#4cc9ff, rgba(76,201,255,.2)); transition: height .3s; }
+  .mr { right: var(--m); top: 50%; transform: translateY(-50%); width: 19vmin; height: 19vmin; padding: 0; border-radius: 50%; }
+  .bl { left: var(--m); bottom: var(--m); width: 27vmin; }
+  .br { right: var(--m); bottom: var(--m); width: 30vmin; height: 13vmin; overflow: hidden; font-size: 2vmin; }
+  .bar { height: 1vmin; background: rgba(76,201,255,.2); margin-top: .4vmin; }
+  .bar b { display: block; height: 100%; width: 0; background: #4cc9ff; }
 
-  /* Modelo actual (arriba derecha) */
-  .holo { position: absolute; right: var(--m); top: var(--m); width: 38vmin; aspect-ratio: 1; }
-  .holo::before { content: ""; position: absolute; inset: -4%; border: 1px dashed rgba(76,201,255,.45); border-radius: 50%; animation: giro 14s linear infinite; }
+  .ret { position: absolute; left: 50%; top: 50%; width: 14vmin; height: 14vmin; transform: translate(-50%,-50%); pointer-events: none; }
+  .ret svg { width: 100%; height: 100%; animation: giro 22s linear infinite; }
+  .hor { position: absolute; left: 50%; top: 50%; width: 26vmin; height: 1px; background: rgba(150,230,255,.7); box-shadow: 0 0 6px #4cc9ff; }
   @keyframes giro { to { transform: rotate(360deg); } }
-  .etq { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 2.8vmin; color: #bfefff; text-shadow: 0 0 6px #4cc9ff; }
 
-  .est { position: absolute; bottom: var(--m); left: 50%; transform: translateX(-50%); font-size: 2.4vmin; color: #7fd8ff; text-shadow: 0 0 6px #000; white-space: nowrap; }
+  .aviso { position: absolute; left: 50%; bottom: calc(var(--m) + 16vmin); transform: translateX(-50%); color: #ffd27a; font: 2.6vmin ui-monospace, monospace; white-space: nowrap; }
+  .aviso:empty { display: none; }
   #vr { position: fixed; bottom: 1.5vmin; left: 50%; transform: translateX(-50%); z-index: 9; opacity: .55;
         background: rgba(5,20,38,.8); color: #d8f1ff; border: 1px solid #4cc9ff; border-radius: 20px; padding: 6px 16px; font-size: 13px; }
 </style>
 </head>
 <body>
 <div id="ojos"></div>
-<canvas id="gl"></canvas>
 <button id="vr">Modo VR</button>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
 <script>
-/* ====== Parámetros (iguales para los dos ojos) ====== */
-const IGNORAR = ['person'];   // clases que no se escanean
-const SEP = 0.05;             // separación entre ojos del holograma (0 = sin profundidad)
-const G = 28;                 // resolución de la malla
-const MAX = 7;                // modelos guardados (1 actual + 6 en el panel)
-const CONFIRMAR = 3;          // detecciones seguidas antes de crear el modelo
-
-const ES = {bottle:'botella',cup:'taza','cell phone':'celular',laptop:'portátil',keyboard:'teclado',mouse:'ratón',tv:'televisor',
-  chair:'silla',couch:'sofá',book:'libro',clock:'reloj',remote:'control remoto',scissors:'tijeras',backpack:'mochila',bowl:'tazón',
-  apple:'manzana',orange:'naranja',knife:'cuchillo',fork:'tenedor',spoon:'cuchara',vase:'jarrón','potted plant':'planta',bed:'cama',
-  'dining table':'mesa',cat:'gato',dog:'perro',car:'auto',bicycle:'bicicleta',umbrella:'paraguas',handbag:'bolso','wine glass':'copa',
-  toothbrush:'cepillo de dientes','teddy bear':'peluche','sports ball':'pelota',bird:'pájaro'};
-
 const $ = s => document.querySelector(s);
-const est = t => document.querySelectorAll('.est').forEach(e => e.textContent = t);
+const q = k => document.querySelectorAll('[data-k="' + k + '"]');
+const put = (k, v) => q(k).forEach(e => e.textContent = v);
+const IOS = /iP(hone|ad)/.test(navigator.userAgent);
 
-/* ====== Dos ojos con la misma estructura ====== */
+/* ====== Dos ojos con el mismo HUD ====== */
+const HUD = `
+<video autoplay playsinline muted></video>
+<div class="p tl"><div class="t">SISTEMA</div><div data-k="hora">--:--:--</div>
+  <div>BAT <span data-k="bat">--</span></div><div class="bar"><b data-k="batb"></b></div>
+  <div>RED <span data-k="red">--</span></div></div>
+<div class="p brj"><canvas width="340" height="50"></canvas></div>
+<div class="p tr"><div class="t">ORIENTACIÓN</div>RUMBO <span data-k="rum">0</span>°<br>ELEV <span data-k="ele">0</span>°<br>INCL <span data-k="inc">0</span>°</div>
+<div class="p ml bars"><i></i><i></i><i></i><i></i><i></i></div>
+<div class="p mr"><canvas class="rd" width="100" height="100"></canvas></div>
+<div class="p bl"><div class="t">RENDIMIENTO</div><canvas class="gf" width="160" height="50" style="height:7vmin"></canvas>FPS <span data-k="fps">--</span></div>
+<div class="p br"><div class="t">REGISTRO</div><div data-k="log"></div></div>
+<div class="ret">
+  <svg viewBox="0 0 100 100" fill="none" stroke="#4cc9ff">
+    <circle cx="50" cy="50" r="46" stroke-opacity=".6" stroke-dasharray="6 8"/>
+    <circle cx="50" cy="50" r="30" stroke-opacity=".5"/>
+  </svg>
+  <div class="hor"></div>
+</div>
+<div class="aviso" data-k="aviso"></div>`;
+
 let vr = false;
 const ojos = [0, 1].map(() => {
   const d = document.createElement('div');
   d.className = 'ojo';
-  d.innerHTML = '<video autoplay playsinline muted></video><div class="panel">' + '<div class="mini"></div>'.repeat(6) +
-                '</div><div class="holo"><span class="etq"></span></div><div class="est">Iniciando…</div>';
+  d.innerHTML = HUD;
   $('#ojos').appendChild(d);
-  return { video: d.querySelector('video'), holo: d.querySelector('.holo'), etq: d.querySelector('.etq'),
-           minis: [...d.querySelectorAll('.mini')] };
+  return { video: d.querySelector('video'), br: d.querySelector('.brj canvas'), rd: d.querySelector('.rd'),
+           gf: d.querySelector('.gf'), hor: d.querySelector('.hor') };
 });
 
-/* ====== Three.js: un solo lienzo con una vista por recuadro ====== */
-const R = new THREE.WebGLRenderer({ canvas: $('#gl'), alpha: true, antialias: true });
-R.setPixelRatio(Math.min(devicePixelRatio, 2));
-R.setClearColor(0x000000, 0);
-R.autoClear = false;
-const escena = new THREE.Scene();
-const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 20);
-const ajustar = () => R.setSize(innerWidth, innerHeight);
-addEventListener('resize', ajustar); ajustar();
+/* ====== Sensores (datos reales) ====== */
+const u = { x: 0, y: 0, z: 9.8 };
+let rumbo = 0, hs = 0, ele = 0, inc = 0;
 
-const mLin = new THREE.LineBasicMaterial({ color: 0x4cc9ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
-const mPun = new THREE.PointsMaterial({ color: 0xa5ecff, size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+addEventListener('devicemotion', e => {
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null) return;
+  const f = IOS ? -1 : 1;
+  u.x += (f * a.x - u.x) * 0.15; u.y += (f * a.y - u.y) * 0.15; u.z += (f * a.z - u.z) * 0.15;
+});
+addEventListener('deviceorientationabsolute', e => {
+  if (e.alpha == null) return;
+  const d = Math.PI / 180, cY = Math.cos(e.gamma * d), cZ = Math.cos(e.alpha * d), sX = Math.sin(e.beta * d),
+        sY = Math.sin(e.gamma * d), sZ = Math.sin(e.alpha * d);
+  rumbo = (Math.atan2(-cZ * sY - sZ * sX * cY, -sZ * sY + cZ * sX * cY) * 57.3 + 360) % 360;
+});
+addEventListener('deviceorientation', e => { if (e.webkitCompassHeading != null) rumbo = e.webkitCompassHeading; });
 
-/* ====== Malla 3D a partir del recorte del objeto ====== */
-function crearModelo(v, [bx, by, bw, bh]) {
-  const c = document.createElement('canvas');
-  c.width = c.height = G;
-  const x = c.getContext('2d', { willReadFrequently: true });
-  x.drawImage(v, Math.max(0, bx), Math.max(0, by), bw, bh, 0, 0, G, G);
-  const px = x.getImageData(0, 0, G, G).data;
+function angulos() {
+  const n = Math.hypot(u.x, u.y, u.z) || 1, ux = u.x / n, uy = u.y / n, uz = u.z / n;
+  ele = Math.asin(Math.max(-1, Math.min(1, -uz))) * 57.3;           // cuánto miras hacia arriba o abajo
+  const ang = (((screen.orientation && screen.orientation.angle) || window.orientation || 0) + 360) % 360;
+  let su, sr;
+  if (ang === 90) { su = ux; sr = -uy; } else if (ang === 270) { su = -ux; sr = uy; }
+  else if (ang === 180) { su = -uy; sr = -ux; } else { su = uy; sr = ux; }
+  inc = Math.atan2(sr, su) * 57.3;                                  // inclinación del horizonte
+}
 
-  const m = Math.max(bw, bh), sx = bw / m, sy = bh / m, sz = 0.15 + 0.4 * Math.min(sx, sy);
-  const cara = [[], []];
-  for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) {
-    const u = i / (G - 1) * 2 - 1, w = j / (G - 1) * 2 - 1;
-    const r = Math.pow(Math.pow(Math.abs(u), 4) + Math.pow(Math.abs(w), 4), 0.25);
-    const env = Math.sqrt(Math.max(0, 1 - r * r));                 // forma redondeada
-    const o = (j * G + i) * 4;
-    const L = (px[o] * 0.3 + px[o + 1] * 0.59 + px[o + 2] * 0.11) / 255;   // relieve según la luz del objeto
-    const z = env * (0.55 + 0.45 * L) * sz;
-    cara[0].push(u * sx, -w * sy, z);
-    cara[1].push(u * sx, -w * sy, -z);
+/* ====== Dibujo de brújula, radar y gráfica ====== */
+const NOM = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+function brujula(c, h) {
+  const x = c.getContext('2d'), W = c.width, H = c.height, pp = W / 90;
+  x.clearRect(0, 0, W, H);
+  x.strokeStyle = 'rgba(150,230,255,.85)'; x.fillStyle = '#bfefff';
+  x.font = 'bold 15px ui-monospace, monospace'; x.textAlign = 'center';
+  for (let a = Math.floor(h - 45); a <= Math.ceil(h + 45); a++) {
+    if (a % 5) continue;
+    const px = W / 2 + (a - h) * pp, big = a % 15 === 0;
+    x.beginPath(); x.moveTo(px, H - 6); x.lineTo(px, H - (big ? 20 : 12)); x.stroke();
+    if (a % 45 === 0) x.fillText(NOM[((a % 360 + 360) % 360) / 45], px, H - 25);
   }
-  const seg = [];
-  for (const s of cara) for (let j = 0; j < G; j++) for (let i = 0; i < G; i++) {
-    const a = (j * G + i) * 3;
-    if (i < G - 1) seg.push(s[a], s[a + 1], s[a + 2], s[a + 3], s[a + 4], s[a + 5]);
-    if (j < G - 1) { const b = a + G * 3; seg.push(s[a], s[a + 1], s[a + 2], s[b], s[b + 1], s[b + 2]); }
+  x.beginPath(); x.moveTo(W / 2 - 5, 2); x.lineTo(W / 2 + 5, 2); x.lineTo(W / 2, 10); x.closePath(); x.fill();
+}
+
+const blips = [];
+let tBlip = 0;
+function radar(c, t) {
+  const x = c.getContext('2d');
+  x.clearRect(0, 0, 100, 100);
+  x.strokeStyle = 'rgba(76,201,255,.45)'; x.lineWidth = 1;
+  [45, 30, 15].forEach(r => { x.beginPath(); x.arc(50, 50, r, 0, 7); x.stroke(); });
+  x.beginPath(); x.moveTo(5, 50); x.lineTo(95, 50); x.moveTo(50, 5); x.lineTo(50, 95); x.stroke();
+  const a0 = t / 700;
+  for (let i = 0; i < 14; i++) {
+    x.strokeStyle = `rgba(120,225,255,${(1 - i / 14) * 0.5})`;
+    x.beginPath(); x.moveTo(50, 50); x.lineTo(50 + 45 * Math.cos(a0 - i * 0.06), 50 + 45 * Math.sin(a0 - i * 0.06)); x.stroke();
   }
-  const gl = new THREE.BufferGeometry();
-  gl.setAttribute('position', new THREE.Float32BufferAttribute(seg, 3));
-  const gp = new THREE.BufferGeometry();
-  gp.setAttribute('position', new THREE.Float32BufferAttribute(cara[0].concat(cara[1]), 3));
-  const g = new THREE.Group();
-  g.add(new THREE.LineSegments(gl, mLin), new THREE.Points(gp, mPun));
-  return { g, s: 0.95 / Math.hypot(sx, sy, sz) };
+  blips.forEach(b => {
+    x.fillStyle = `rgba(255,210,122,${b.v})`;
+    x.beginPath(); x.arc(50 + b.r * Math.cos(b.a), 50 + b.r * Math.sin(b.a), 2.2, 0, 7); x.fill();
+  });
 }
 
-/* ====== Modelos guardados ====== */
-let almacen = [];
-const liberar = it => it.g.traverse(o => o.geometry && o.geometry.dispose());
-const etiquetar = it => ojos.forEach(o => o.etq.textContent = it ? `${it.nombre} ${it.p}%` : '');
-
-function agregar(c) {
-  const { g, s } = crearModelo(ojos[0].video, c.bbox);
-  almacen = almacen.filter(a => a.clase !== c.class || (liberar(a), false));
-  almacen.unshift({ clase: c.class, nombre: ES[c.class] || c.class, p: Math.round(c.score * 100), g, s, t0: performance.now() });
-  while (almacen.length > MAX) liberar(almacen.pop());
-  etiquetar(almacen[0]);
+const hist = [];
+function grafica(c) {
+  const x = c.getContext('2d'), W = c.width, H = c.height;
+  x.clearRect(0, 0, W, H);
+  x.strokeStyle = '#4cc9ff'; x.lineWidth = 2; x.beginPath();
+  hist.forEach((v, i) => { const px = i / 39 * W, py = H - Math.min(1, v / 60) * (H - 4) - 2; i ? x.lineTo(px, py) : x.moveTo(px, py); });
+  x.stroke();
 }
 
-/* ====== Dibujo (mismo contenido en cada ojo) ====== */
-function dibujar(el, it, t) {
-  if (!it) return;
-  const r = el.getBoundingClientRect();
-  if (!r.width) return;
-  const vx = r.left, vy = innerHeight - r.bottom;
-  R.setViewport(vx, vy, r.width, r.height);
-  R.setScissor(vx, vy, r.width, r.height);
-  const k = Math.min(1, (t - it.t0) / 500);
-  it.g.rotation.set(0.25, t / 1100, 0);
-  it.g.scale.setScalar(it.s * (1 - Math.pow(1 - k, 3) * 0.5));
-  escena.clear(); escena.add(it.g);
-  R.render(escena, cam);
-}
-
-function pintar(t) {
-  requestAnimationFrame(pintar);
-  R.setScissorTest(false);
-  R.setViewport(0, 0, innerWidth, innerHeight);
-  R.clear();
-  R.setScissorTest(true);
+/* ====== Bucle principal ====== */
+let tf = performance.now(), fr = 0, fps = 0;
+function bucle(t) {
+  requestAnimationFrame(bucle);
+  fr++;
+  if (t - tf >= 500) { fps = Math.round(fr * 1000 / (t - tf)); fr = 0; tf = t; hist.push(fps); if (hist.length > 40) hist.shift(); }
+  if (t - tBlip > 900) { tBlip = t; blips.push({ a: Math.random() * 6.28, r: 10 + Math.random() * 32, v: 1 }); if (blips.length > 6) blips.shift(); }
+  blips.forEach(b => b.v = Math.max(0.15, b.v - 0.005));
+  angulos();
+  hs += (((rumbo - hs + 540) % 360) - 180) * 0.2;
   for (let k = 0; k < (vr ? 2 : 1); k++) {
     const o = ojos[k];
-    cam.position.set(vr ? (k - 0.5) * 2 * SEP : 0, 0, 3.8);
-    cam.lookAt(0, 0, 0);
-    dibujar(o.holo, almacen[0], t);
-    o.minis.forEach((e, i) => dibujar(e, almacen[i + 1], t));
+    brujula(o.br, (hs + 360) % 360);
+    radar(o.rd, t);
+    grafica(o.gf);
+    o.hor.style.transform = `translate(-50%,-50%) rotate(${inc}deg) translateY(${ele * 0.35}vmin)`;
   }
 }
 
-/* ====== Detección de objetos ====== */
-let modelo, candidato = null, cuenta = 0;
+/* ====== Datos de texto ====== */
+const LOG = ['SENSORES EN LÍNEA', 'ENFOQUE ESTABLE', 'ESCANEO DE ENTORNO', 'ENERGÍA NOMINAL', 'SEÑAL ESTABLE', 'CÁMARA ACTIVA', 'RASTREO ACTIVO', 'SISTEMA LISTO'];
+let lineas = ['> SISTEMA LISTO'];
+setInterval(() => {
+  lineas.push('> ' + LOG[Math.floor(Math.random() * LOG.length)]);
+  if (lineas.length > 4) lineas.shift();
+  q('log').forEach(e => e.innerHTML = lineas.join('<br>'));
+}, 1300);
+setInterval(() => document.querySelectorAll('.bars i').forEach(i => i.style.height = (15 + Math.random() * 80) + '%'), 350);
+setInterval(() => {
+  put('hora', new Date().toLocaleTimeString('es', { hour12: false }));
+  put('rum', Math.round((hs + 360) % 360));
+  put('ele', Math.round(ele));
+  put('inc', Math.round(inc));
+  put('fps', fps);
+  const c = navigator.connection;
+  put('red', c && c.effectiveType ? c.effectiveType.toUpperCase() : 'N/D');
+}, 100);
 
-function procesar(c) {
-  if (!c) { candidato = null; cuenta = 0; est('Buscando objetos…'); return; }
-  if (almacen[0] && c.class === almacen[0].clase) { candidato = null; cuenta = 0; est('Objeto: ' + almacen[0].nombre); return; }
-  cuenta = c.class === candidato ? cuenta + 1 : 1;
-  candidato = c.class;
-  est('Escaneando ' + (ES[c.class] || c.class) + '…');
-  if (cuenta >= CONFIRMAR) { agregar(c); candidato = null; cuenta = 0; }
-}
-
-async function detectar() {
-  const v = ojos[0].video;
-  if (v.readyState >= 2) {
-    try {
-      const r = await modelo.detect(v, 8);
-      const c = r.filter(o => o.score >= 0.6 && !IGNORAR.includes(o.class))
-                 .sort((a, b) => b.bbox[2] * b.bbox[3] - a.bbox[2] * a.bbox[3])[0];
-      procesar(c);
-    } catch (e) { est('Error: ' + e.message); }
-  }
-  setTimeout(detectar, 50);
-}
+if (navigator.getBattery) navigator.getBattery().then(b => {
+  const act = () => { put('bat', Math.round(b.level * 100) + '%' + (b.charging ? ' ⚡' : '')); q('batb').forEach(e => e.style.width = b.level * 100 + '%'); };
+  act(); b.addEventListener('levelchange', act); b.addEventListener('chargingchange', act);
+});
 
 /* ====== Modo VR (pantalla dividida) ====== */
 $('#vr').onclick = async () => {
   vr = !vr;
   document.body.classList.toggle('vr', vr);
   $('#vr').textContent = vr ? 'Salir de VR' : 'Modo VR';
+  for (const E of [window.DeviceMotionEvent, window.DeviceOrientationEvent])
+    if (E && E.requestPermission) { try { await E.requestPermission(); } catch (e) {} }
   try {
     if (vr) { await document.documentElement.requestFullscreen(); await screen.orientation.lock('landscape'); }
     else { screen.orientation.unlock(); await document.exitFullscreen(); }
@@ -197,21 +217,16 @@ $('#vr').onclick = async () => {
   ojos[1].video.play().catch(() => {});
 };
 
-/* ====== Inicio ====== */
+/* ====== Cámara ====== */
 (async () => {
   let s;
   try {
     try {
       s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } });
     } catch (e) { s = await navigator.mediaDevices.getUserMedia({ video: true }); }
-  } catch (e) { est('Cámara no disponible: ' + e.message); return; }
-  ojos.forEach(o => { o.video.srcObject = s; o.video.play().catch(() => {}); });
-  requestAnimationFrame(pintar);
-  est('Cargando detector…');
-  try { modelo = await cocoSsd.load({ base: 'lite_mobilenet_v2' }); }
-  catch (e) { est('No se pudo cargar el detector (¿hay internet?)'); return; }
-  est('Buscando objetos…');
-  detectar();
+  } catch (e) { put('aviso', 'Cámara no disponible: ' + e.message); }
+  if (s) ojos.forEach(o => { o.video.srcObject = s; o.video.play().catch(() => {}); });
+  requestAnimationFrame(bucle);
 })();
 </script>
 </body>
