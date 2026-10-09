@@ -38,8 +38,8 @@ header{display:flex;justify-content:space-between;padding:10px 16px;font-size:12
 <div class="core" id="core"><i></i><i></i><i></i><b></b></div>
 <div id="clock">--:--:--</div><div id="date"></div>
 <div id="log"></div>
-<div class="live" id="live">Di «Jarvis» seguido de tu orden</div>
-<div id="start"><div style="font-size:22px;letter-spacing:4px;color:var(--a)">J.A.R.V.I.S.</div><button id="go">ACTIVAR</button><p>Toca una vez y permite el micrófono. Después escucha todo el tiempo: di «Jarvis, ¿qué hora es?». Para que siga activo, no cierres esta pestaña.</p></div>
+<div class="live" id="live">Pregúntame o dime lo que necesites</div>
+<div id="start"><div style="font-size:22px;letter-spacing:4px;color:var(--a)">J.A.R.V.I.S.</div><button id="go">ACTIVAR</button><p>Toca una vez y permite el micrófono. Después escucha todo el tiempo y responde a lo que digas: «dime la hora», «cuéntame un chiste», «nuevo comando»… No cierres esta pestaña.</p></div>
 <script>
 const $=id=>document.getElementById(id),log=$('log');
 let voice=true;
@@ -54,29 +54,42 @@ function reply(t){add(t);say(t)}
 const jokes=["¿Por qué los pájaros vuelan al sur? Porque caminando tardarían demasiado.","Un byte entra a un bar y pide algo. El camarero: '¿Algo más?'. El byte: 'No, solo un bit.'","Mi lealtad es absoluta... salvo cuando se acaba la batería.","Dicen que soy artificial, pero mi sarcasmo es 100% natural."];
 const facts=["La luz del Sol tarda unos 8 minutos en llegar a la Tierra.","Los pulpos tienen tres corazones.","Hay más estrellas en el universo que granos de arena en todas las playas."];
 const pick=a=>a[Math.floor(Math.random()*a.length)];
-function think(q){
-  const s=q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const m=s.match(/^(?:cuanto es|calcula)?\s*([\d\s.+\-*\/x()%^]+)$/);
-  if(m&&/\d/.test(m[1])&&/[+\-*\/x%^]/.test(m[1])){try{const r=Function('"use strict";return('+m[1].replace(/x/g,'*').replace(/\^/g,'**')+')')();return 'El resultado es '+(+r.toFixed(6))+', señor.'}catch(e){}}
-  if(/hola|buenas|hey|jarvis/.test(s))return pick(['A su servicio, señor.','Buenas. ¿En qué puedo ayudarle?','Todos los sistemas operativos. Dígame.']);
-  if(/hora/.test(s))return 'Son las '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})+'.';
-  if(/fecha|dia es|hoy/.test(s))return 'Hoy es '+new Date().toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.';
-  if(/chiste|broma|risa/.test(s))return pick(jokes);
-  if(/dato|curiosidad/.test(s))return pick(facts);
-  if(/quien eres|que eres/.test(s))return 'Soy J.A.R.V.I.S., su asistente virtual. Corro directamente en su navegador.';
-  if(/gracias/.test(s))return 'Siempre un placer, señor.';
-  if(/estado|sistema|bateria/.test(s)){const n=navigator;return 'Sistemas al 100%. Conexión: '+(n.onLine?'estable':'sin red')+'. Núcleos: '+(n.hardwareConcurrency||'?')+'.'}
-  if(/dado|numero/.test(s))return 'Saqué un '+(1+Math.floor(Math.random()*6))+'.';
-  if(/youtube|google|wikipedia/.test(s)){const t=s.replace(/.*(youtube|google|wikipedia)\s*(de|sobre)?/,'').trim();const u={youtube:'https://www.youtube.com/results?search_query=',google:'https://www.google.com/search?q=',wikipedia:'https://es.wikipedia.org/w/index.php?search='};const k=s.match(/youtube|google|wikipedia/)[0];window.open(u[k]+encodeURIComponent(t),'_blank');return 'Abriendo '+k+'.'}
-  if(/silencio|calla|mutea/.test(s)){voice=false;return 'Voz desactivada.'}
-  if(/habla|voz on|activa voz/.test(s)){voice=true;return 'Voz activada.'}
-  return 'No tengo esa orden registrada, señor. Pruebe con: hora, fecha, chiste, dato, calcula 5*8, o "google gatos".';
-}
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const norm=t=>t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-const WAKE=/\b(jarvis|yarvis|jarvi|jarbis|yarbis|jervis|jarvi?s)\b/;
-const QUICK=/hora|fecha|dia es|chiste|broma|dato|curiosidad|estado|dado|gracias|quien eres|silencio|calla|hola/;
-let rec,on=false,speaking=false,awakeUntil=0,handled=-1,vz=null,wl=null;
+const clean=t=>norm(t).replace(/[¿?¡!.,;:]/g,' ').replace(/\s+/g,' ').trim();
+let cmds=[];try{cmds=JSON.parse(localStorage.getItem('jarvis_cmds')||'[]')}catch(e){}
+function saveCmds(){try{localStorage.setItem('jarvis_cmds',JSON.stringify(cmds))}catch(e){}}
+function custom(n){
+  const w=n.split(' ');
+  for(const c of cmds){if(n===c.t||n.includes(c.t)||c.t.split(' ').every(x=>w.includes(x)))return c.r}
+  return null;
+}
+function think(s){
+  let c=s.replace(/\bmas\b/g,'+').replace(/\bmenos\b/g,'-').replace(/\bpor\b/g,'*').replace(/\b(entre|dividido por|dividido)\b/g,'/').replace(/\bx\b/g,'*').replace(/^(cuanto es|cuanto da|calcula|resuelve|dime cuanto es)\s*/,'');
+  if(/^[\d\s.+\-*\/()%^]+$/.test(c)&&/\d\s*[+\-*\/%^]\s*\d/.test(c)){try{const r=Function('"use strict";return('+c.replace(/\^/g,'**')+')')();return 'El resultado es '+(+r.toFixed(6))+'.'}catch(e){}}
+  const tm=s.match(/(temporizador|cuenta regresiva|avisame|alarma).*?(\d+)\s*(segundo|minuto|hora)/);
+  if(tm){const k={segundo:1,minuto:60,hora:3600}[tm[3]]*+tm[2];setTimeout(()=>reply('Señor, el temporizador de '+tm[2]+' '+tm[3]+(tm[2]>1?'s':'')+' ha terminado.'),k*1000);return 'Temporizador de '+tm[2]+' '+tm[3]+(tm[2]>1?'s':'')+' en marcha.'}
+  if(/\bhora\b|que horas/.test(s))return 'Son las '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})+'.';
+  if(/fecha|que dia|dia es|dia estamos|hoy es|en que mes|a cuanto estamos/.test(s))return 'Hoy es '+new Date().toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.';
+  if(/chiste|broma|hazme reir|algo gracioso|cuentame algo/.test(s))return pick(jokes);
+  if(/dato|curiosidad|sabias que|algo interesante/.test(s))return pick(facts);
+  if(/quien eres|que eres|como te llamas|tu nombre|presentate/.test(s))return 'Soy J.A.R.V.I.S., su asistente virtual. Corro directamente en su navegador.';
+  if(/gracias|te lo agradezco|buen trabajo|eres genial/.test(s))return 'Siempre un placer, señor.';
+  if(/como estas|que tal|como te va|como andas/.test(s))return 'Todos mis sistemas funcionan al cien por ciento. ¿Y usted?';
+  if(/\b(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|que onda|que hubo)\b/.test(s))return pick(['A su servicio, señor.','Buenas. ¿En qué puedo ayudarle?','Todos los sistemas operativos. Dígame.']);
+  if(/estado|sistema|bateria|conexion/.test(s))return 'Sistemas al 100%. Conexión: '+(navigator.onLine?'estable':'sin red')+'. Núcleos: '+(navigator.hardwareConcurrency||'?')+'.';
+  if(/dado|numero al azar|numero aleatorio/.test(s))return 'Saqué un '+(1+Math.floor(Math.random()*6))+'.';
+  if(/moneda|cara o (cruz|sello)/.test(s))return pick(['Cara.','Cruz.']);
+  if(/\b(silencio|callate|calla|mutea)\b/.test(s)){voice=false;return 'Voz desactivada.'}
+  if(/activa (la )?voz|vuelve a hablar|puedes hablar/.test(s)){voice=true;return 'Voz activada.'}
+  const q=s.match(/(youtube|google|wikipedia|busca)\s*(en google|en youtube|en wikipedia|de|sobre)?\s*(.*)/);
+  if(q&&q[3]){const k=q[1]==='busca'?(/youtube/.test(q[2]||'')?'youtube':'google'):q[1];const u={youtube:'https://www.youtube.com/results?search_query=',google:'https://www.google.com/search?q=',wikipedia:'https://es.wikipedia.org/w/index.php?search='};window.open(u[k]+encodeURIComponent(q[3]),'_blank');return 'Buscando '+q[3]+' en '+k+'.'}
+  return null;
+}
+function answer(n){return custom(n)||think(n)}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const WAKE=/\b(jarvis|yarvis|jarvi|jarbis|yarbis|jervis)\b/g;
+const QUICK=/\bhora\b|que horas|fecha|que dia|dia es|chiste|broma|dato|curiosidad|quien eres|como te llamas|gracias|como estas|que tal|\bhola\b|buenas|estado|dado|moneda|silencio|callate/;
+let rec,on=false,speaking=false,handled=-1,vz=null,wl=null,teach=null;
 function pickVoice(){
   const vs=(window.speechSynthesis?speechSynthesis.getVoices():[]).filter(v=>/^es/i.test(v.lang));
   if(!vs.length)return;
@@ -96,18 +109,35 @@ say=function(t){
   u.onend=u.onerror=()=>{speaking=false;$('core').classList.remove('talk');listen()};
   speechSynthesis.speak(u)}catch(e){}
 };
-function exec(shown,cmd){awakeUntil=0;add(shown,1);reply(think(cmd))}
+// ---- modo "nuevo comando": frase -> respuesta, se guarda en el dispositivo ----
+function teachStep(raw,n){
+  if(/\b(cancela|cancelar|olvidalo|déjalo|dejalo)\b/.test(n)){teach=null;reply('Cancelado.');return}
+  if(teach.step===1){teach.t=n;teach.show=raw;teach.step=2;reply('Entendido: «'+raw+'». ¿Qué debo responder cuando lo escuche?');return}
+  const i=cmds.findIndex(c=>c.t===teach.t);const c={t:teach.t,r:raw};
+  if(i>=0)cmds[i]=c;else cmds.push(c);saveCmds();teach=null;
+  reply('Listo. Cuando escuche «'+c.t+'», responderé: '+raw);
+}
+function process(raw,fin,idx){
+  const n=clean(raw).replace(WAKE,' ').replace(/\s+/g,' ').trim();
+  if(n.length<2)return;
+  $('live').textContent='“'+raw.trim()+'”';
+  if(teach){if(fin)teachStep(raw.trim(),n);return}
+  if(fin&&/(nuevo|nueva|agrega\w*|anade|crea\w*|aprende) (un |una )?(comando|regla|frase)|^nuevo comando/.test(n)){teach={step:1};add(raw.trim(),1);reply('Muy bien. Dime la frase o comando que quieres que escuche.');return}
+  if(fin&&/(mis|lista de|cuantos) comandos/.test(n)){add(raw.trim(),1);reply(cmds.length?'Tienes '+cmds.length+' comandos propios: '+cmds.map(c=>c.t).join(', ')+'.':'Aún no tienes comandos propios. Di «nuevo comando» para crear uno.');return}
+  if(fin&&/(borra|elimina|olvida)\w* (el |todos los )?comandos?\s*(.*)/.test(n)){
+    const t=n.replace(/.*(borra|elimina|olvida)\w* (el |todos los )?comandos?\s*/,'').trim();add(raw.trim(),1);
+    if(!t||/todos/.test(n)){cmds=[];saveCmds();reply('He borrado todos tus comandos.')}
+    else{const k=cmds.length;cmds=cmds.filter(c=>!(c.t.includes(t)||t.includes(c.t)));saveCmds();reply(k>cmds.length?'Comando eliminado.':'No encontré ese comando.')}
+    return}
+  const a=answer(n);
+  if(a!==null){if(fin||QUICK.test(n)||custom(n)!==null){add(raw.trim(),1);reply(a);if(!fin)handled=idx}}
+  else if(fin&&n.split(' ').length>=2){add(raw.trim(),1);reply('No sé responder eso todavía. Di «nuevo comando» y me lo enseñas.')}
+}
 function onResult(e){
   for(let i=e.resultIndex;i<e.results.length;i++){
-    const r=e.results[i],t=r[0].transcript,fin=r.isFinal;
-    if(i===handled){if(fin)handled=-1;continue}
-    const n=norm(t),m=n.match(WAKE),awake=Date.now()<awakeUntil;
-    $('live').textContent='“'+t.trim()+'”';
-    if(!m&&!awake)continue;
-    const cmd=(m?n.slice(m.index+m[0].length):n).replace(/^[\s,.:]+/,'').trim();
-    if(!cmd){if(fin){awakeUntil=Date.now()+8000;reply('Dígame, señor.')}continue}
-    // respuesta inmediata: ejecuta sin esperar el final si ya se entiende la orden
-    if(fin||QUICK.test(cmd)){exec(t.trim(),cmd);if(!fin)handled=i}
+    const r=e.results[i];
+    if(i===handled){if(r.isFinal)handled=-1;continue}
+    process(r[0].transcript,r.isFinal,i);
   }
 }
 function listen(){if(!on||speaking)return;try{rec.start()}catch(e){}}
@@ -118,7 +148,6 @@ function init(){
   rec.onend=()=>{$('core').classList.remove('listen');handled=-1;setTimeout(listen,60)};
   rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){on=false;$('st').textContent='SIN MICRÓFONO';$('live').textContent='Permite el micrófono para usarme.'}};
 }
-// mantener activo lo más posible: pantalla encendida + audio silencioso + controles multimedia
 async function keepAlive(){
   try{wl=await navigator.wakeLock.request('screen')}catch(e){}
   try{
@@ -136,7 +165,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&on){keepA
 $('go').onclick=()=>{
   if(!SR){$('start').innerHTML='<p style="font-size:15px">Este navegador no permite escuchar de forma continua. Prueba en Chrome (Android o PC).</p>';return}
   $('start').remove();on=true;init();listen();keepAlive();
-  reply('Sistemas en línea. Estoy escuchando, señor.');
+  reply('Sistemas en línea. Te escucho, no hace falta que digas Jarvis.');
 };
 </script>
 </body>
