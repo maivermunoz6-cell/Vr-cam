@@ -1,233 +1,112 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Cámara VR con HUD</title>
+<title>J.A.R.V.I.S.</title>
 <style>
-  * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; background: #000; overflow: hidden; }
-  #ojos { position: fixed; inset: 0; display: flex; }
-  .ojo { --m: 3vmin; flex: 1; min-width: 0; position: relative; overflow: hidden; }
-  body.vr .ojo { --m: 7vmin; }
-  body:not(.vr) .ojo:nth-child(2) { display: none; }
-  .ojo + .ojo { border-left: 1px solid #000; }
-  .ojo video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .ojo::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 16vmin rgba(0,50,110,.6); }
-
-  /* Paneles transparentes */
-  .p {
-    position: absolute; color: #bfefff;
-    font: 2.6vmin/1.35 ui-monospace, Menlo, monospace;
-    background: rgba(10,60,110,.12);
-    border: 1px solid rgba(76,201,255,.4); border-left: 2px solid #4cc9ff; border-radius: 3px;
-    padding: .8vmin 1.2vmin; text-shadow: 0 0 5px rgba(76,201,255,.7);
-  }
-  .p canvas { display: block; width: 100%; height: 100%; }
-  .t { color: #6fb9dd; font-size: 2.1vmin; margin-bottom: .3vmin; }
-  .tl { left: var(--m); top: var(--m); width: 27vmin; }
-  .tr { right: var(--m); top: var(--m); width: 27vmin; }
-  .brj { left: 50%; top: var(--m); transform: translateX(-50%); width: 34vmin; height: 6vmin; padding: 0; }
-  .ml { left: var(--m); top: 50%; transform: translateY(-50%); width: 11vmin; height: 22vmin; display: flex; gap: .8vmin; align-items: flex-end; }
-  .ml i { flex: 1; height: 30%; background: linear-gradient(#4cc9ff, rgba(76,201,255,.2)); transition: height .3s; }
-  .mr { right: var(--m); top: 50%; transform: translateY(-50%); width: 19vmin; height: 19vmin; padding: 0; border-radius: 50%; }
-  .bl { left: var(--m); bottom: var(--m); width: 27vmin; }
-  .br { right: var(--m); bottom: var(--m); width: 30vmin; height: 13vmin; overflow: hidden; font-size: 2vmin; }
-  .bar { height: 1vmin; background: rgba(76,201,255,.2); margin-top: .4vmin; }
-  .bar b { display: block; height: 100%; width: 0; background: #4cc9ff; }
-
-  .ret { position: absolute; left: 50%; top: 50%; width: 14vmin; height: 14vmin; transform: translate(-50%,-50%); pointer-events: none; }
-  .ret svg { width: 100%; height: 100%; animation: giro 22s linear infinite; }
-  .hor { position: absolute; left: 50%; top: 50%; width: 26vmin; height: 1px; background: rgba(150,230,255,.7); box-shadow: 0 0 6px #4cc9ff; }
-  @keyframes giro { to { transform: rotate(360deg); } }
-
-  .aviso { position: absolute; left: 50%; bottom: calc(var(--m) + 16vmin); transform: translateX(-50%); color: #ffd27a; font: 2.6vmin ui-monospace, monospace; white-space: nowrap; }
-  .aviso:empty { display: none; }
-  #vr { position: fixed; bottom: 1.5vmin; left: 50%; transform: translateX(-50%); z-index: 9; opacity: .55;
-        background: rgba(5,20,38,.8); color: #d8f1ff; border: 1px solid #4cc9ff; border-radius: 20px; padding: 6px 16px; font-size: 13px; }
+:root{--bg:#030b14;--fg:#bfefff;--a:#00d4ff;--a2:#0a5d78;--card:rgba(0,212,255,.07);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#030b14}}
+:root[data-theme="dark"]{--bg:#030b14}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;height:100%;background:radial-gradient(circle at 50% 20%,#06263a,var(--bg) 70%);color:var(--fg);font-family:"Segoe UI",system-ui,Roboto,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;justify-content:space-between;padding:10px 16px;font-size:12px;letter-spacing:2px;color:var(--a);border-bottom:1px solid var(--a2)}
+.core{position:relative;width:130px;height:130px;margin:14px auto 6px;flex:none}
+.core i{position:absolute;inset:0;border-radius:50%;border:2px solid var(--a);box-shadow:0 0 14px var(--a),inset 0 0 14px var(--a)}
+.core i:nth-child(1){animation:spin 8s linear infinite;border-style:dashed}
+.core i:nth-child(2){inset:16px;animation:spin 5s linear infinite reverse;border-style:dotted}
+.core i:nth-child(3){inset:34px;border-width:3px}
+.core b{position:absolute;inset:50px;border-radius:50%;background:#fff;box-shadow:0 0 30px 10px var(--a);animation:pulse 2s ease-in-out infinite}
+.core.talk b{animation-duration:.3s}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{transform:scale(1.4);opacity:.7}}
+#clock{text-align:center;font-size:30px;letter-spacing:6px;color:var(--a);text-shadow:0 0 10px var(--a)}
+#date{text-align:center;font-size:12px;opacity:.7;margin-bottom:6px;text-transform:capitalize}
+#log{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.m{max-width:85%;padding:9px 12px;border-radius:12px;background:var(--card);border:1px solid var(--a2);font-size:15px;line-height:1.35;white-space:pre-wrap}
+.m.u{align-self:flex-end;border-color:var(--a)}
+.live{min-height:34px;text-align:center;padding:6px 14px;font-size:14px;color:var(--a);opacity:.85;font-style:italic}
+#start{position:fixed;inset:0;z-index:9;background:rgba(3,11,20,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px}
+#start button{background:none;color:var(--a);border:2px solid var(--a);border-radius:30px;padding:16px 30px;font-size:18px;letter-spacing:3px;box-shadow:0 0 18px var(--a)}
+#start p{margin:0;font-size:13px;opacity:.7;max-width:320px}
+.core.listen i:nth-child(3){border-color:#4dff9d;box-shadow:0 0 14px #4dff9d,inset 0 0 14px #4dff9d}
 </style>
 </head>
 <body>
-<div id="ojos"></div>
-<button id="vr">Modo VR</button>
-
+<header><span>J.A.R.V.I.S.</span><span id="st">EN LÍNEA</span></header>
+<div class="core" id="core"><i></i><i></i><i></i><b></b></div>
+<div id="clock">--:--:--</div><div id="date"></div>
+<div id="log"></div>
+<div class="live" id="live">Di «Jarvis» seguido de tu orden</div>
+<div id="start"><div style="font-size:22px;letter-spacing:4px;color:var(--a)">J.A.R.V.I.S.</div><button id="go">ACTIVAR</button><p>Toca una vez y permite el micrófono. Después escucha todo el tiempo: di «Jarvis, ¿qué hora es?». Mantén esta pantalla abierta.</p></div>
 <script>
-const $ = s => document.querySelector(s);
-const q = k => document.querySelectorAll('[data-k="' + k + '"]');
-const put = (k, v) => q(k).forEach(e => e.textContent = v);
-const IOS = /iP(hone|ad)/.test(navigator.userAgent);
-
-/* ====== Dos ojos con el mismo HUD ====== */
-const HUD = `
-<video autoplay playsinline muted></video>
-<div class="p tl"><div class="t">SISTEMA</div><div data-k="hora">--:--:--</div>
-  <div>BAT <span data-k="bat">--</span></div><div class="bar"><b data-k="batb"></b></div>
-  <div>RED <span data-k="red">--</span></div></div>
-<div class="p brj"><canvas width="340" height="50"></canvas></div>
-<div class="p tr"><div class="t">ORIENTACIÓN</div>RUMBO <span data-k="rum">0</span>°<br>ELEV <span data-k="ele">0</span>°<br>INCL <span data-k="inc">0</span>°</div>
-<div class="p ml bars"><i></i><i></i><i></i><i></i><i></i></div>
-<div class="p mr"><canvas class="rd" width="100" height="100"></canvas></div>
-<div class="p bl"><div class="t">RENDIMIENTO</div><canvas class="gf" width="160" height="50" style="height:7vmin"></canvas>FPS <span data-k="fps">--</span></div>
-<div class="p br"><div class="t">REGISTRO</div><div data-k="log"></div></div>
-<div class="ret">
-  <svg viewBox="0 0 100 100" fill="none" stroke="#4cc9ff">
-    <circle cx="50" cy="50" r="46" stroke-opacity=".6" stroke-dasharray="6 8"/>
-    <circle cx="50" cy="50" r="30" stroke-opacity=".5"/>
-  </svg>
-  <div class="hor"></div>
-</div>
-<div class="aviso" data-k="aviso"></div>`;
-
-let vr = false;
-const ojos = [0, 1].map(() => {
-  const d = document.createElement('div');
-  d.className = 'ojo';
-  d.innerHTML = HUD;
-  $('#ojos').appendChild(d);
-  return { video: d.querySelector('video'), br: d.querySelector('.brj canvas'), rd: d.querySelector('.rd'),
-           gf: d.querySelector('.gf'), hor: d.querySelector('.hor') };
-});
-
-/* ====== Sensores (datos reales) ====== */
-const u = { x: 0, y: 0, z: 9.8 };
-let rumbo = 0, hs = 0, ele = 0, inc = 0;
-
-addEventListener('devicemotion', e => {
-  const a = e.accelerationIncludingGravity;
-  if (!a || a.x == null) return;
-  const f = IOS ? -1 : 1;
-  u.x += (f * a.x - u.x) * 0.15; u.y += (f * a.y - u.y) * 0.15; u.z += (f * a.z - u.z) * 0.15;
-});
-addEventListener('deviceorientationabsolute', e => {
-  if (e.alpha == null) return;
-  const d = Math.PI / 180, cY = Math.cos(e.gamma * d), cZ = Math.cos(e.alpha * d), sX = Math.sin(e.beta * d),
-        sY = Math.sin(e.gamma * d), sZ = Math.sin(e.alpha * d);
-  rumbo = (Math.atan2(-cZ * sY - sZ * sX * cY, -sZ * sY + cZ * sX * cY) * 57.3 + 360) % 360;
-});
-addEventListener('deviceorientation', e => { if (e.webkitCompassHeading != null) rumbo = e.webkitCompassHeading; });
-
-function angulos() {
-  const n = Math.hypot(u.x, u.y, u.z) || 1, ux = u.x / n, uy = u.y / n, uz = u.z / n;
-  ele = Math.asin(Math.max(-1, Math.min(1, -uz))) * 57.3;           // cuánto miras hacia arriba o abajo
-  const ang = (((screen.orientation && screen.orientation.angle) || window.orientation || 0) + 360) % 360;
-  let su, sr;
-  if (ang === 90) { su = ux; sr = -uy; } else if (ang === 270) { su = -ux; sr = uy; }
-  else if (ang === 180) { su = -uy; sr = -ux; } else { su = uy; sr = ux; }
-  inc = Math.atan2(sr, su) * 57.3;                                  // inclinación del horizonte
+const $=id=>document.getElementById(id),log=$('log');
+let voice=true;
+function tick(){const d=new Date();$('clock').textContent=d.toLocaleTimeString('es');$('date').textContent=d.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+setInterval(tick,1000);tick();
+function say(t){
+  try{if(!voice||!window.speechSynthesis)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='es-ES';u.rate=.95;u.pitch=.8;
+  u.onstart=()=>$('core').classList.add('talk');u.onend=()=>$('core').classList.remove('talk');speechSynthesis.speak(u)}catch(e){}
 }
-
-/* ====== Dibujo de brújula, radar y gráfica ====== */
-const NOM = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
-function brujula(c, h) {
-  const x = c.getContext('2d'), W = c.width, H = c.height, pp = W / 90;
-  x.clearRect(0, 0, W, H);
-  x.strokeStyle = 'rgba(150,230,255,.85)'; x.fillStyle = '#bfefff';
-  x.font = 'bold 15px ui-monospace, monospace'; x.textAlign = 'center';
-  for (let a = Math.floor(h - 45); a <= Math.ceil(h + 45); a++) {
-    if (a % 5) continue;
-    const px = W / 2 + (a - h) * pp, big = a % 15 === 0;
-    x.beginPath(); x.moveTo(px, H - 6); x.lineTo(px, H - (big ? 20 : 12)); x.stroke();
-    if (a % 45 === 0) x.fillText(NOM[((a % 360 + 360) % 360) / 45], px, H - 25);
-  }
-  x.beginPath(); x.moveTo(W / 2 - 5, 2); x.lineTo(W / 2 + 5, 2); x.lineTo(W / 2, 10); x.closePath(); x.fill();
+function add(t,u){const d=document.createElement('div');d.className='m'+(u?' u':'');d.textContent=t;log.appendChild(d);log.scrollTop=log.scrollHeight}
+function reply(t){add(t);say(t)}
+const jokes=["¿Por qué los pájaros vuelan al sur? Porque caminando tardarían demasiado.","Un byte entra a un bar y pide algo. El camarero: '¿Algo más?'. El byte: 'No, solo un bit.'","Mi lealtad es absoluta... salvo cuando se acaba la batería.","Dicen que soy artificial, pero mi sarcasmo es 100% natural."];
+const facts=["La luz del Sol tarda unos 8 minutos en llegar a la Tierra.","Los pulpos tienen tres corazones.","Hay más estrellas en el universo que granos de arena en todas las playas."];
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function think(q){
+  const s=q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const m=s.match(/^(?:cuanto es|calcula)?\s*([\d\s.+\-*\/x()%^]+)$/);
+  if(m&&/\d/.test(m[1])&&/[+\-*\/x%^]/.test(m[1])){try{const r=Function('"use strict";return('+m[1].replace(/x/g,'*').replace(/\^/g,'**')+')')();return 'El resultado es '+(+r.toFixed(6))+', señor.'}catch(e){}}
+  if(/hola|buenas|hey|jarvis/.test(s))return pick(['A su servicio, señor.','Buenas. ¿En qué puedo ayudarle?','Todos los sistemas operativos. Dígame.']);
+  if(/hora/.test(s))return 'Son las '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})+'.';
+  if(/fecha|dia es|hoy/.test(s))return 'Hoy es '+new Date().toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.';
+  if(/chiste|broma|risa/.test(s))return pick(jokes);
+  if(/dato|curiosidad/.test(s))return pick(facts);
+  if(/quien eres|que eres/.test(s))return 'Soy J.A.R.V.I.S., su asistente virtual. Corro directamente en su navegador.';
+  if(/gracias/.test(s))return 'Siempre un placer, señor.';
+  if(/estado|sistema|bateria/.test(s)){const n=navigator;return 'Sistemas al 100%. Conexión: '+(n.onLine?'estable':'sin red')+'. Núcleos: '+(n.hardwareConcurrency||'?')+'.'}
+  if(/dado|numero/.test(s))return 'Saqué un '+(1+Math.floor(Math.random()*6))+'.';
+  if(/youtube|google|wikipedia/.test(s)){const t=s.replace(/.*(youtube|google|wikipedia)\s*(de|sobre)?/,'').trim();const u={youtube:'https://www.youtube.com/results?search_query=',google:'https://www.google.com/search?q=',wikipedia:'https://es.wikipedia.org/w/index.php?search='};const k=s.match(/youtube|google|wikipedia/)[0];window.open(u[k]+encodeURIComponent(t),'_blank');return 'Abriendo '+k+'.'}
+  if(/silencio|calla|mutea/.test(s)){voice=false;return 'Voz desactivada.'}
+  if(/habla|voz on|activa voz/.test(s)){voice=true;return 'Voz activada.'}
+  return 'No tengo esa orden registrada, señor. Pruebe con: hora, fecha, chiste, dato, calcula 5*8, o "google gatos".';
 }
-
-const blips = [];
-let tBlip = 0;
-function radar(c, t) {
-  const x = c.getContext('2d');
-  x.clearRect(0, 0, 100, 100);
-  x.strokeStyle = 'rgba(76,201,255,.45)'; x.lineWidth = 1;
-  [45, 30, 15].forEach(r => { x.beginPath(); x.arc(50, 50, r, 0, 7); x.stroke(); });
-  x.beginPath(); x.moveTo(5, 50); x.lineTo(95, 50); x.moveTo(50, 5); x.lineTo(50, 95); x.stroke();
-  const a0 = t / 700;
-  for (let i = 0; i < 14; i++) {
-    x.strokeStyle = `rgba(120,225,255,${(1 - i / 14) * 0.5})`;
-    x.beginPath(); x.moveTo(50, 50); x.lineTo(50 + 45 * Math.cos(a0 - i * 0.06), 50 + 45 * Math.sin(a0 - i * 0.06)); x.stroke();
-  }
-  blips.forEach(b => {
-    x.fillStyle = `rgba(255,210,122,${b.v})`;
-    x.beginPath(); x.arc(50 + b.r * Math.cos(b.a), 50 + b.r * Math.sin(b.a), 2.2, 0, 7); x.fill();
-  });
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec,on=false,speaking=false,awakeUntil=0;
+function handle(raw){
+  const t=raw.trim();$('live').textContent='“'+t+'”';
+  const n=t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const m=n.match(/\b(jarvis|yarvis|jarvi|jarbis|yarbis|jervis)\b/);
+  const awake=Date.now()<awakeUntil;
+  if(!m&&!awake)return;
+  let cmd=m?n.slice(m.index+m[0].length).replace(/^[\s,.:]+/,''):n;
+  if(!cmd){awakeUntil=Date.now()+8000;add('Jarvis');reply('Dígame, señor.');return}
+  awakeUntil=0;add(t,1);reply(think(cmd));
 }
-
-const hist = [];
-function grafica(c) {
-  const x = c.getContext('2d'), W = c.width, H = c.height;
-  x.clearRect(0, 0, W, H);
-  x.strokeStyle = '#4cc9ff'; x.lineWidth = 2; x.beginPath();
-  hist.forEach((v, i) => { const px = i / 39 * W, py = H - Math.min(1, v / 60) * (H - 4) - 2; i ? x.lineTo(px, py) : x.moveTo(px, py); });
-  x.stroke();
+function listen(){
+  if(!on||speaking)return;
+  try{rec.start()}catch(e){}
 }
-
-/* ====== Bucle principal ====== */
-let tf = performance.now(), fr = 0, fps = 0;
-function bucle(t) {
-  requestAnimationFrame(bucle);
-  fr++;
-  if (t - tf >= 500) { fps = Math.round(fr * 1000 / (t - tf)); fr = 0; tf = t; hist.push(fps); if (hist.length > 40) hist.shift(); }
-  if (t - tBlip > 900) { tBlip = t; blips.push({ a: Math.random() * 6.28, r: 10 + Math.random() * 32, v: 1 }); if (blips.length > 6) blips.shift(); }
-  blips.forEach(b => b.v = Math.max(0.15, b.v - 0.005));
-  angulos();
-  hs += (((rumbo - hs + 540) % 360) - 180) * 0.2;
-  for (let k = 0; k < (vr ? 2 : 1); k++) {
-    const o = ojos[k];
-    brujula(o.br, (hs + 360) % 360);
-    radar(o.rd, t);
-    grafica(o.gf);
-    o.hor.style.transform = `translate(-50%,-50%) rotate(${inc}deg) translateY(${ele * 0.35}vmin)`;
-  }
+function init(){
+  rec=new SR();rec.lang='es-ES';rec.continuous=true;rec.interimResults=false;
+  rec.onstart=()=>{$('core').classList.add('listen');$('st').textContent='ESCUCHANDO'};
+  rec.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)handle(e.results[i][0].transcript)};
+  rec.onend=()=>{$('core').classList.remove('listen');setTimeout(listen,250)};
+  rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){on=false;$('st').textContent='SIN MICRÓFONO';$('live').textContent='Permite el micrófono para usarme.'}};
 }
-
-/* ====== Datos de texto ====== */
-const LOG = ['SENSORES EN LÍNEA', 'ENFOQUE ESTABLE', 'ESCANEO DE ENTORNO', 'ENERGÍA NOMINAL', 'SEÑAL ESTABLE', 'CÁMARA ACTIVA', 'RASTREO ACTIVO', 'SISTEMA LISTO'];
-let lineas = ['> SISTEMA LISTO'];
-setInterval(() => {
-  lineas.push('> ' + LOG[Math.floor(Math.random() * LOG.length)]);
-  if (lineas.length > 4) lineas.shift();
-  q('log').forEach(e => e.innerHTML = lineas.join('<br>'));
-}, 1300);
-setInterval(() => document.querySelectorAll('.bars i').forEach(i => i.style.height = (15 + Math.random() * 80) + '%'), 350);
-setInterval(() => {
-  put('hora', new Date().toLocaleTimeString('es', { hour12: false }));
-  put('rum', Math.round((hs + 360) % 360));
-  put('ele', Math.round(ele));
-  put('inc', Math.round(inc));
-  put('fps', fps);
-  const c = navigator.connection;
-  put('red', c && c.effectiveType ? c.effectiveType.toUpperCase() : 'N/D');
-}, 100);
-
-if (navigator.getBattery) navigator.getBattery().then(b => {
-  const act = () => { put('bat', Math.round(b.level * 100) + '%' + (b.charging ? ' ⚡' : '')); q('batb').forEach(e => e.style.width = b.level * 100 + '%'); };
-  act(); b.addEventListener('levelchange', act); b.addEventListener('chargingchange', act);
-});
-
-/* ====== Modo VR (pantalla dividida) ====== */
-$('#vr').onclick = async () => {
-  vr = !vr;
-  document.body.classList.toggle('vr', vr);
-  $('#vr').textContent = vr ? 'Salir de VR' : 'Modo VR';
-  for (const E of [window.DeviceMotionEvent, window.DeviceOrientationEvent])
-    if (E && E.requestPermission) { try { await E.requestPermission(); } catch (e) {} }
-  try {
-    if (vr) { await document.documentElement.requestFullscreen(); await screen.orientation.lock('landscape'); }
-    else { screen.orientation.unlock(); await document.exitFullscreen(); }
-  } catch (e) {}
-  ojos[1].video.play().catch(() => {});
+// pausar el micro mientras Jarvis habla, para que no se oiga a sí mismo
+say=function(t){
+  try{if(!voice||!window.speechSynthesis)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='es-ES';u.rate=.95;u.pitch=.8;
+  u.onstart=()=>{speaking=true;$('core').classList.add('talk');try{rec.stop()}catch(e){}};
+  u.onend=u.onerror=()=>{speaking=false;$('core').classList.remove('talk');listen()};
+  speechSynthesis.speak(u)}catch(e){}
 };
-
-/* ====== Cámara ====== */
-(async () => {
-  let s;
-  try {
-    try {
-      s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } });
-    } catch (e) { s = await navigator.mediaDevices.getUserMedia({ video: true }); }
-  } catch (e) { put('aviso', 'Cámara no disponible: ' + e.message); }
-  if (s) ojos.forEach(o => { o.video.srcObject = s; o.video.play().catch(() => {}); });
-  requestAnimationFrame(bucle);
-})();
+$('go').onclick=()=>{
+  if(!SR){$('start').innerHTML='<p style="font-size:15px">Este navegador no permite escuchar de forma continua. Prueba en Chrome (Android o PC).</p>';return}
+  $('start').remove();on=true;init();listen();
+  reply('Sistemas en línea. Estoy escuchando, señor.');
+};
 </script>
 </body>
 </html>
