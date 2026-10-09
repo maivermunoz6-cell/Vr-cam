@@ -39,7 +39,7 @@ header{display:flex;justify-content:space-between;padding:10px 16px;font-size:12
 <div id="clock">--:--:--</div><div id="date"></div>
 <div id="log"></div>
 <div class="live" id="live">Di «Jarvis» seguido de tu orden</div>
-<div id="start"><div style="font-size:22px;letter-spacing:4px;color:var(--a)">J.A.R.V.I.S.</div><button id="go">ACTIVAR</button><p>Toca una vez y permite el micrófono. Después escucha todo el tiempo: di «Jarvis, ¿qué hora es?». Mantén esta pantalla abierta.</p></div>
+<div id="start"><div style="font-size:22px;letter-spacing:4px;color:var(--a)">J.A.R.V.I.S.</div><button id="go">ACTIVAR</button><p>Toca una vez y permite el micrófono. Después escucha todo el tiempo: di «Jarvis, ¿qué hora es?». Para que siga activo, no cierres esta pestaña.</p></div>
 <script>
 const $=id=>document.getElementById(id),log=$('log');
 let voice=true;
@@ -73,38 +73,69 @@ function think(q){
   return 'No tengo esa orden registrada, señor. Pruebe con: hora, fecha, chiste, dato, calcula 5*8, o "google gatos".';
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let rec,on=false,speaking=false,awakeUntil=0;
-function handle(raw){
-  const t=raw.trim();$('live').textContent='“'+t+'”';
-  const n=t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const m=n.match(/\b(jarvis|yarvis|jarvi|jarbis|yarbis|jervis)\b/);
-  const awake=Date.now()<awakeUntil;
-  if(!m&&!awake)return;
-  let cmd=m?n.slice(m.index+m[0].length).replace(/^[\s,.:]+/,''):n;
-  if(!cmd){awakeUntil=Date.now()+8000;add('Jarvis');reply('Dígame, señor.');return}
-  awakeUntil=0;add(t,1);reply(think(cmd));
+const norm=t=>t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const WAKE=/\b(jarvis|yarvis|jarvi|jarbis|yarbis|jervis|jarvi?s)\b/;
+const QUICK=/hora|fecha|dia es|chiste|broma|dato|curiosidad|estado|dado|gracias|quien eres|silencio|calla|hola/;
+let rec,on=false,speaking=false,awakeUntil=0,handled=-1,vz=null,wl=null;
+function pickVoice(){
+  const vs=(window.speechSynthesis?speechSynthesis.getVoices():[]).filter(v=>/^es/i.test(v.lang));
+  if(!vs.length)return;
+  const sc=v=>{const n=v.name.toLowerCase();let x=0;
+    if(/natural|neural|online|premium|enhanced/.test(n))x+=8;
+    if(/google/.test(n))x+=4;
+    if(/jorge|diego|pablo|enrique|alvaro|raul|juan|carlos|miguel|male|hombre/.test(n))x+=3;
+    if(/es-(mx|us|419|es)/i.test(v.lang))x+=1;return x};
+  vz=vs.sort((p,q)=>sc(q)-sc(p))[0];
 }
-function listen(){
-  if(!on||speaking)return;
-  try{rec.start()}catch(e){}
-}
-function init(){
-  rec=new SR();rec.lang='es-ES';rec.continuous=true;rec.interimResults=false;
-  rec.onstart=()=>{$('core').classList.add('listen');$('st').textContent='ESCUCHANDO'};
-  rec.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)handle(e.results[i][0].transcript)};
-  rec.onend=()=>{$('core').classList.remove('listen');setTimeout(listen,250)};
-  rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){on=false;$('st').textContent='SIN MICRÓFONO';$('live').textContent='Permite el micrófono para usarme.'}};
-}
-// pausar el micro mientras Jarvis habla, para que no se oiga a sí mismo
+if(window.speechSynthesis){speechSynthesis.onvoiceschanged=pickVoice;pickVoice()}
 say=function(t){
-  try{if(!voice||!window.speechSynthesis)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='es-ES';u.rate=.95;u.pitch=.8;
+  try{if(!voice||!window.speechSynthesis)return;speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t);u.lang='es-ES';if(vz){u.voice=vz;u.lang=vz.lang}
+  u.rate=1.08;u.pitch=.95;
   u.onstart=()=>{speaking=true;$('core').classList.add('talk');try{rec.stop()}catch(e){}};
   u.onend=u.onerror=()=>{speaking=false;$('core').classList.remove('talk');listen()};
   speechSynthesis.speak(u)}catch(e){}
 };
+function exec(shown,cmd){awakeUntil=0;add(shown,1);reply(think(cmd))}
+function onResult(e){
+  for(let i=e.resultIndex;i<e.results.length;i++){
+    const r=e.results[i],t=r[0].transcript,fin=r.isFinal;
+    if(i===handled){if(fin)handled=-1;continue}
+    const n=norm(t),m=n.match(WAKE),awake=Date.now()<awakeUntil;
+    $('live').textContent='“'+t.trim()+'”';
+    if(!m&&!awake)continue;
+    const cmd=(m?n.slice(m.index+m[0].length):n).replace(/^[\s,.:]+/,'').trim();
+    if(!cmd){if(fin){awakeUntil=Date.now()+8000;reply('Dígame, señor.')}continue}
+    // respuesta inmediata: ejecuta sin esperar el final si ya se entiende la orden
+    if(fin||QUICK.test(cmd)){exec(t.trim(),cmd);if(!fin)handled=i}
+  }
+}
+function listen(){if(!on||speaking)return;try{rec.start()}catch(e){}}
+function init(){
+  rec=new SR();rec.lang='es-ES';rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
+  rec.onstart=()=>{$('core').classList.add('listen');$('st').textContent='ESCUCHANDO'};
+  rec.onresult=onResult;
+  rec.onend=()=>{$('core').classList.remove('listen');handled=-1;setTimeout(listen,60)};
+  rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){on=false;$('st').textContent='SIN MICRÓFONO';$('live').textContent='Permite el micrófono para usarme.'}};
+}
+// mantener activo lo más posible: pantalla encendida + audio silencioso + controles multimedia
+async function keepAlive(){
+  try{wl=await navigator.wakeLock.request('screen')}catch(e){}
+  try{
+    if(!window._sil){const sr=8000,n=sr*2,b=new DataView(new ArrayBuffer(44+n));
+      const w=(o,x)=>{for(let k=0;k<x.length;k++)b.setUint8(o+k,x.charCodeAt(k))};
+      w(0,'RIFF');b.setUint32(4,36+n,true);w(8,'WAVEfmt ');b.setUint32(16,16,true);b.setUint16(20,1,true);b.setUint16(22,1,true);
+      b.setUint32(24,sr,true);b.setUint32(28,sr,true);b.setUint16(32,1,true);b.setUint16(34,8,true);w(36,'data');b.setUint32(40,n,true);
+      for(let k=0;k<n;k++)b.setUint8(44+k,128);
+      window._sil=new Audio(URL.createObjectURL(new Blob([b],{type:'audio/wav'})));window._sil.loop=true;window._sil.volume=.02}
+    await window._sil.play();
+  }catch(e){}
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:'Jarvis escuchando',artist:'J.A.R.V.I.S.'})}catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&on){keepAlive();listen()}});
 $('go').onclick=()=>{
   if(!SR){$('start').innerHTML='<p style="font-size:15px">Este navegador no permite escuchar de forma continua. Prueba en Chrome (Android o PC).</p>';return}
-  $('start').remove();on=true;init();listen();
+  $('start').remove();on=true;init();listen();keepAlive();
   reply('Sistemas en línea. Estoy escuchando, señor.');
 };
 </script>
